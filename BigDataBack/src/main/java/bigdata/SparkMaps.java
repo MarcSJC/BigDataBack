@@ -27,7 +27,7 @@ public class SparkMaps {
 			return new Tuple2<String, Integer>(tab[2], Integer.valueOf(tab[4]));
 		});
 		rdd2.repartition(4);
-		System.out.println(">>>>>>>>>>>>>>>>>>>> count : " + rdd2.count());
+		System.out.println(">>>>>>>>>>>>>>>>>>> count : " + rdd2.count());
 	}	
 
 	
