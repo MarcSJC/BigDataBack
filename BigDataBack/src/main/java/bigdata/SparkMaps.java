@@ -20,9 +20,9 @@ public class SparkMaps {
 		JavaPairRDD<String, PortableDataStream> rdd;
 		rdd = context.binaryFiles(args[0]);
 		rdd = rdd.repartition(4);
-		System.out.println(">>>>>>>>>>>>>>>>>>> count : " + rdd.count());
-		System.out.println(">>>>>>>>>>>>>>>>>>> example id : " + rdd.id());
-		System.out.println(">>>>>>>>>>>>>>>>>>> example name : " + rdd.name());
+		for (Tuple2<String, PortableDataStream> line : rdd.collect()) {
+			System.out.println(">>>>>>>>>>>>>>>>>>> truc : " + line);
+		}
 	}	
 
 	
