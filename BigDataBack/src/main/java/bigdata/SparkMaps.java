@@ -65,7 +65,7 @@ public class SparkMaps {
 		/*for (String line : rdd.collect()) {
 			System.out.println(">>>>>>>>>>>>>>>>>>> truc : " + line);
 		}*/
-		System.out.println(">>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
+		System.out.println(">>>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
 	}	
 
 	
