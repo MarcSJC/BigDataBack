@@ -1,6 +1,7 @@
 package bigdata;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
@@ -64,7 +65,7 @@ public class SparkMaps {
 		/*for (String line : rdd.collect()) {
 			System.out.println(">>>>>>>>>>>>>>>>>>> truc : " + line);
 		}*/
-		System.out.println(">>>>>>>>>>>>>>>>>>> data : " + data);
+		System.out.println(">>>>>>>>>>>>>>>>>>> data : " + Arrays.toString(data));
 	}	
 
 	
