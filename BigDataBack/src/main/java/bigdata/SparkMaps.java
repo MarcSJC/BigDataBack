@@ -1,7 +1,11 @@
 package bigdata;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import org.apache.commons.io.FilenameUtils;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
@@ -17,6 +21,15 @@ public class SparkMaps {
 	final static int dem3Size= 1201;
 	static int minh = 0;
 	static int maxh = 255;
+	
+	private static String dataLineToString(int[] dataLine) {
+		StringBuffer buffer = new StringBuffer();
+		for (int i = 0 ; i < dataLine.length ; ++i) {
+			buffer.append(dataLine[i]);
+			buffer.append(' ');
+		}
+		return buffer.toString();
+	}
 
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
@@ -61,11 +74,26 @@ public class SparkMaps {
 				break;
 			}
 		}
-		maxh -= minh;
+		//maxh -= minh;
 		/*for (String line : rdd.collect()) {
 			System.out.println(">>>>>>>>>>>>>>>>>>> truc : " + line);
 		}*/
-		System.out.println(">>>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
+		//System.out.println(">>>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
+		PrintWriter writer;
+		try {
+			writer = new PrintWriter(FilenameUtils.removeExtension(filePath) + ".pgm", "UTF-8");
+			writer.println("P2");
+			writer.println(dem3Size + " " + dem3Size);
+			writer.println(maxh);
+			for (int k = 0 ; k < data.length ; ++k) {
+				writer.println(dataLineToString(data[k]));
+			}
+			writer.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+		}
 	}	
 
 	
