@@ -62,6 +62,12 @@ public class SparkMaps {
 			value = Integer.max(value, minh);
 			minh = Integer.min(value, minh);
 			data[i][j] = value;*/
+			int value = 0;
+			value = b[0] & 0xFF;
+			value = Integer.min(value, maxh);
+			value = Integer.max(value, minh);
+			//minh = Integer.min(value, minh);
+			data[i][j] = value;
 			if (j >= dem3Size) {
 				i++;
 				j = 0;
@@ -69,12 +75,6 @@ public class SparkMaps {
 			else {
 				j++;
 			}
-			int value = 0;
-			value = b[0] & 0xFF;
-			value = Integer.min(value, maxh);
-			value = Integer.max(value, minh);
-			//minh = Integer.min(value, minh);
-			data[i][j] = value;
 		}
 		//System.out.println(">>>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
 		PrintWriter writer;
