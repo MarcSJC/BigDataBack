@@ -55,6 +55,7 @@ public class SparkMaps {
 		for (byte[] b : rdd.collect()) {
 			if (i == 0) {
 				System.out.println(">>>>>>>>>>>>>>>>>>> b length : " + b.length);
+				System.out.println(">>>>>>>>>>>>>>>>>>> b content : " + Arrays.toString(b));
 			}
 			if (i >= dem3Size) {
 				break;
