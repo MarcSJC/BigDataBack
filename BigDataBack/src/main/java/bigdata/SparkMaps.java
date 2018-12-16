@@ -39,7 +39,8 @@ public class SparkMaps {
 		JavaRDD<byte[]> rdd;
 		String filePath = args[0];
 		rdd = context.binaryRecords(filePath, 2);
-		rdd = rdd.repartition(4);
+		//rdd = rdd.repartition(4);
+		rdd.coalesce(4, false);
 		byte buffer[] = new byte[2];
 		double lat, lng;
 		String s = filePath.substring(filePath.length() - 11, filePath.length());
@@ -53,37 +54,27 @@ public class SparkMaps {
 		int j = 0;
 		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
 		for (byte[] b : rdd.collect()) {
-			if (i >= dem3Size) {
-				break;
-			}
-			/*int value= 0;
-			value = b[1] & 0xFF; // (b[0] << 8) | b[1];
-			value = Integer.min(value, maxh);
-			value = Integer.max(value, minh);
-			minh = Integer.min(value, minh);
-			data[i][j] = value;*/
-			int value = 0;
-			if (j == 0) System.out.println(">>>>>>>>>>>>>>>>>>> b[0] b[1] : " + b[0] + " |||||| " + b[1]);
-			value = b[0];
-			if (value < 0) value += 256;
-			value = Integer.min(value, maxh);
-			//value = Integer.max(value, minh);
-			minh = Integer.min(value, minh);
-			maxh -= minh;
-			data[i][j] = value;
-			if (j >= dem3Size - 1) {
-				i++;
-				j = 0;
-			}
-			else {
-				j++;
+			if (i < dem3Size) {
+				int value = 0;
+				//-------------
+				ByteBuffer buf = ByteBuffer.wrap(b);
+				value = buf.getShort();
+				//-------------
+				if (value < 0) value += 256;
+				data[i][j] = value;
+				if (j >= dem3Size - 1) {
+					i++;
+					j = 0;
+				}
+				else {
+					j++;
+				}
 			}
 		}
-		//System.out.println(">>>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
 		PrintWriter writer;
 		try {
 			//File f = new File(FilenameUtils.removeExtension(filePath) + ".pgm");
-			File f = new File("test.pgm");
+			File f = new File(filePath.substring(0, filePath.length() - 11) + "test.pgm");
 			writer = new PrintWriter(f, "UTF-8");
 			writer.println("P2");
 			writer.println(dem3Size + " " + dem3Size);
