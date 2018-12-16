@@ -70,7 +70,7 @@ public class SparkMaps {
 				j++;
 			}
 			int value = 0;
-			value = b[j] & 0xFF;
+			value = b[0] & 0xFF;
 			value = Integer.min(value, maxh);
 			value = Integer.max(value, minh);
 			//minh = Integer.min(value, minh);
