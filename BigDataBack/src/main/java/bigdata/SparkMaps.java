@@ -59,8 +59,7 @@ public class SparkMaps {
 		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
 		for (byte[] b : rdd.collect()) {
 			int value= 0;
-			System.out.println(">>>>>>>>>>>>>>>>>>> byte[] b length : " + b.length);
-		    for(int k = 0 ; k < b.length ; k++)
+		    for(int k = 0 ; k < b.length ; k++) {
 		    	value = b[k]; // (value << 8) | b[k];
 			value = Integer.min(value, maxh);
 			value = Integer.max(value, minh);
@@ -76,6 +75,7 @@ public class SparkMaps {
 			if (i >= dem3Size - 1) {
 				break;
 			}
+		    }
 		}
 		//maxh -= minh;
 		/*for (String line : rdd.collect()) {
