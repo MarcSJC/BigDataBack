@@ -59,7 +59,7 @@ public class SparkMaps {
 		for (byte[] b : rdd.collect()) {
 			int value= 0;
 		    for(int k = 0 ; k < b.length ; k++)
-		    	value = (value << 8) | b[k];
+		    	value = b[k]; // (value << 8) | b[k];
 			value = Integer.min(value, maxh);
 			value = Integer.max(value, minh);
 			minh = Integer.min(value, minh);
