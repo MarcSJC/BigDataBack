@@ -62,12 +62,13 @@ public class SparkMaps {
 				break;
 			}
 			int value= 0;
-		    for(int k = 0 ; k < b.length ; k++) {
-		    	value = b[k]; // (value << 8) | b[k];
+		    /*for(int k = 0 ; k < b.length ; k++)
+		    	value = (value << 8) | b[k];*/
+			value = (b[0] << 8) | b[1];
 			value = Integer.min(value, maxh);
 			value = Integer.max(value, minh);
 			minh = Integer.min(value, minh);
-			data[i][j] = value;
+			data[i][j] = (value & 0xFF);
 			if (j >= dem3Size - 1) {
 				i++;
 				j = 0;
@@ -75,7 +76,6 @@ public class SparkMaps {
 			else {
 				j++;
 			}
-		    }
 		}
 		//maxh -= minh;
 		/*for (String line : rdd.collect()) {
