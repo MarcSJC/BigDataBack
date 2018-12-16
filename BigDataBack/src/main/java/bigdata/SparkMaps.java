@@ -26,7 +26,7 @@ public class SparkMaps {
 	private static String dataLineToString(int[] dataLine) {
 		StringBuffer buffer = new StringBuffer();
 		for (int i = 0 ; i < dataLine.length ; ++i) {
-			buffer.append(dataLine[i]);
+			buffer.append(dataLine[i] - minh);
 			buffer.append(' ');
 		}
 		return buffer.toString();
@@ -65,8 +65,9 @@ public class SparkMaps {
 			int value = 0;
 			value = b[0] & 0xFF;
 			value = Integer.min(value, maxh);
-			value = Integer.max(value, minh);
-			//minh = Integer.min(value, minh);
+			//value = Integer.max(value, minh);
+			minh = Integer.min(value, minh);
+			maxh -= minh;
 			data[i][j] = value;
 			if (j >= dem3Size - 1) {
 				i++;
