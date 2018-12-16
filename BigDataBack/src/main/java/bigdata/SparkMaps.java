@@ -56,15 +56,13 @@ public class SparkMaps {
 			if (i >= dem3Size) {
 				break;
 			}
-			if (i == 0) {
-				System.out.println(">>>>>>>>>>>>>>>>>>> b length : " + b.length);
-			}
 			/*int value= 0;
 			value = b[1] & 0xFF; // (b[0] << 8) | b[1];
 			value = Integer.min(value, maxh);
 			value = Integer.max(value, minh);
 			minh = Integer.min(value, minh);
 			data[i][j] = value;*/
+			System.out.println(">>>>>>>>>>>>>>>>>>>> b[0] : " + b[0]);
 			int value = 0;
 			value = b[0] & 0xFF;
 			value = Integer.min(value, maxh);
