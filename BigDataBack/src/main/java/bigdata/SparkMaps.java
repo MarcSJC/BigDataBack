@@ -62,9 +62,9 @@ public class SparkMaps {
 			value = Integer.max(value, minh);
 			minh = Integer.min(value, minh);
 			data[i][j] = value;*/
-			System.out.println(">>>>>>>>>>>>>>>>>>>> b[0] : " + b[0]);
 			int value = 0;
-			value = b[0] & 0xFF;
+			value = b[0];
+			if (value < minh) value += maxh + 1;
 			value = Integer.min(value, maxh);
 			//value = Integer.max(value, minh);
 			minh = Integer.min(value, minh);
