@@ -38,7 +38,7 @@ public class SparkMaps {
 		int data[][] = new int[dem3Size][dem3Size];
 		JavaRDD<byte[]> rdd;
 		String filePath = args[0];
-		rdd = context.binaryRecords(filePath, 2);
+		rdd = context.binaryRecords(filePath, 1201);
 		rdd = rdd.repartition(4);
 		byte buffer[] = new byte[2];
 		double lat, lng;
@@ -48,23 +48,15 @@ public class SparkMaps {
 		if (filePath.charAt(0) == 'S' || filePath.charAt(0) == 's') lat *= -1;
         if (filePath.charAt(3) == 'W' || filePath.charAt(3) == 'w') lng *= -1;
 		System.out.println(">>>>>>>>>>>>>>>>>>> lat, lng : " + lat + ", " + lng);
-		/*for (int i = 0 ; i < dem3Size ; ++i) {
-			for (int j = 0 ; j < dem3Size ; ++j) {
-				
-			}
-		}*/
 		int id = 0;
 		int i = 0;
-		int j = 0;
+		//int j = 0;
 		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
 		for (byte[] b : rdd.collect()) {
-			if (i >= dem3Size - 1) {
+			if (i > dem3Size) {
 				break;
 			}
-			//System.out.println(">>>>>>>>>>>>>>>>>>> b : " + b[0] + " ||||||||||||||||| " + b[1]);
-			int value= 0;
-		    /*for(int k = 0 ; k < b.length ; k++)
-		    	value = (value << 8) | b[k];*/
+			/*int value= 0;
 			value = b[1] & 0xFF; // (b[0] << 8) | b[1];
 			value = Integer.min(value, maxh);
 			value = Integer.max(value, minh);
@@ -76,12 +68,17 @@ public class SparkMaps {
 			}
 			else {
 				j++;
+			}*/
+			for (int j = 0 ; j < dem3Size ; ++j) {
+				int value= 0;
+				value = b[j] & 0xFF;
+				value = Integer.min(value, maxh);
+				value = Integer.max(value, minh);
+				minh = Integer.min(value, minh);
+				data[i][j] = value;
 			}
+			i++;
 		}
-		//maxh -= minh;
-		/*for (String line : rdd.collect()) {
-			System.out.println(">>>>>>>>>>>>>>>>>>> truc : " + line);
-		}*/
 		//System.out.println(">>>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
 		PrintWriter writer;
 		try {
