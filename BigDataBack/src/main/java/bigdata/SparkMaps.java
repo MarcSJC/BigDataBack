@@ -38,7 +38,7 @@ public class SparkMaps {
 		int data[][] = new int[dem3Size][dem3Size];
 		JavaRDD<byte[]> rdd;
 		String filePath = args[0];
-		rdd = context.binaryRecords(filePath, 2);
+		rdd = context.binaryRecords(filePath, 1);
 		rdd = rdd.repartition(4);
 		byte buffer[] = new byte[2];
 		double lat, lng;
@@ -61,11 +61,11 @@ public class SparkMaps {
 			if (i >= dem3Size - 1) {
 				break;
 			}
-			System.out.println(">>>>>>>>>>>>>>>>>>> b : " + b[0] + " ||||||||||||||||| " + b[1]);
+			//System.out.println(">>>>>>>>>>>>>>>>>>> b : " + b[0] + " ||||||||||||||||| " + b[1]);
 			int value= 0;
 		    /*for(int k = 0 ; k < b.length ; k++)
 		    	value = (value << 8) | b[k];*/
-			value = (b[0] << 8) | b[1];
+			value = b[0]; // (b[0] << 8) | b[1];
 			value = Integer.min(value, maxh);
 			value = Integer.max(value, minh);
 			minh = Integer.min(value, minh);
