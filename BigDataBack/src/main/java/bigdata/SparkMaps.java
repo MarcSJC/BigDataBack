@@ -56,8 +56,10 @@ public class SparkMaps {
 		int id = 0;
 		int i = 0;
 		int j = 0;
+		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
 		for (byte[] b : rdd.collect()) {
 			int value= 0;
+			System.out.println(">>>>>>>>>>>>>>>>>>> byte[] b length : " + b.length);
 		    for(int k = 0 ; k < b.length ; k++)
 		    	value = b[k]; // (value << 8) | b[k];
 			value = Integer.min(value, maxh);
