@@ -63,7 +63,8 @@ public class SparkMaps {
 			minh = Integer.min(value, minh);
 			data[i][j] = value;*/
 			int value = 0;
-			value = b[0] + (b[1] * 256);
+			if (j == 0) System.out.println(">>>>>>>>>>>>>>>>>>> b[0] b[1] : " + b[0] + " |||||| " + b[1]);
+			value = b[0];
 			if (value < 0) value += 256;
 			value = Integer.min(value, maxh);
 			//value = Integer.max(value, minh);
