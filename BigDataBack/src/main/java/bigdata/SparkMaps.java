@@ -1,5 +1,6 @@
 package bigdata;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
@@ -81,7 +82,9 @@ public class SparkMaps {
 		//System.out.println(">>>>>>>>>>>>>>>>>>>> data : " + Arrays.deepToString(data));
 		PrintWriter writer;
 		try {
-			writer = new PrintWriter(FilenameUtils.removeExtension(filePath) + ".pgm", "UTF-8");
+			//File f = new File(FilenameUtils.removeExtension(filePath) + ".pgm");
+			File f = new File("test.pgm");
+			writer = new PrintWriter(f, "UTF-8");
 			writer.println("P2");
 			writer.println(dem3Size + " " + dem3Size);
 			writer.println(maxh);
