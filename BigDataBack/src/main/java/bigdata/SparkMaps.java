@@ -68,7 +68,7 @@ public class SparkMaps {
 			value = Integer.max(value, minh);
 			//minh = Integer.min(value, minh);
 			data[i][j] = value;
-			if (j >= dem3Size) {
+			if (j >= dem3Size - 1) {
 				i++;
 				j = 0;
 			}
