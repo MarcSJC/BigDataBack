@@ -58,6 +58,9 @@ public class SparkMaps {
 		int j = 0;
 		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
 		for (byte[] b : rdd.collect()) {
+			if (i >= dem3Size - 1) {
+				break;
+			}
 			int value= 0;
 		    for(int k = 0 ; k < b.length ; k++) {
 		    	value = b[k]; // (value << 8) | b[k];
@@ -71,9 +74,6 @@ public class SparkMaps {
 			}
 			else {
 				j++;
-			}
-			if (i >= dem3Size - 1) {
-				break;
 			}
 		    }
 		}
