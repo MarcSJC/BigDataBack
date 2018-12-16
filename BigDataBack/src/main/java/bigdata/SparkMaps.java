@@ -61,6 +61,7 @@ public class SparkMaps {
 			if (i >= dem3Size - 1) {
 				break;
 			}
+			System.out.println(">>>>>>>>>>>>>>>>>>> b : " + b[0] + " ||||||||||||||||| " + b[1]);
 			int value= 0;
 		    /*for(int k = 0 ; k < b.length ; k++)
 		    	value = (value << 8) | b[k];*/
