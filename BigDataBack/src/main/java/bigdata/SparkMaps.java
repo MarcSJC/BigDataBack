@@ -36,9 +36,9 @@ public class SparkMaps {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
 		int data[][] = new int[dem3Size][dem3Size];
-		JavaRDD<byte[]> rdd;
+		JavaRDD<String> rdd;
 		String filePath = args[0];
-		rdd = context.binaryRecords(filePath, 1201);
+		rdd = context.textFile(filePath);
 		rdd = rdd.repartition(4);
 		byte buffer[] = new byte[2];
 		double lat, lng;
@@ -52,7 +52,7 @@ public class SparkMaps {
 		int i = 0;
 		//int j = 0;
 		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
-		for (byte[] b : rdd.collect()) {
+		for (String b : rdd.collect()) {
 			if (i >= dem3Size) {
 				break;
 			}
@@ -69,9 +69,10 @@ public class SparkMaps {
 			else {
 				j++;
 			}*/
+			char[] tokens = b.toCharArray();
 			for (int j = 0 ; j < dem3Size ; ++j) {
 				int value= 0;
-				value = b[j] & 0xFF;
+				value = (int) tokens[j];
 				value = Integer.min(value, maxh);
 				value = Integer.max(value, minh);
 				minh = Integer.min(value, minh);
