@@ -61,6 +61,7 @@ public class SparkMaps {
 				value = buf.getShort();
 				//-------------
 				if (value < 0) value += 256;
+				if (value > 255) value = maxh;
 				data[i][j] = value;
 				if (j >= dem3Size - 1) {
 					i++;
@@ -74,7 +75,8 @@ public class SparkMaps {
 		PrintWriter writer;
 		try {
 			//File f = new File(FilenameUtils.removeExtension(filePath) + ".pgm");
-			File f = new File(filePath.substring(0, filePath.length() - 11) + "test.pgm");
+			String newPath = "test.pgm"; //"user/pascal/pgm/" + filePath.substring(filePath.length() - 11, filePath.length() - 4) + ".pgm";
+			File f = new File(newPath);
 			writer = new PrintWriter(f, "UTF-8");
 			writer.println("P2");
 			writer.println(dem3Size + " " + dem3Size);
