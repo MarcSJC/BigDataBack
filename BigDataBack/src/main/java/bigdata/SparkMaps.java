@@ -1,11 +1,17 @@
 package bigdata;
 
+import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+
+import javax.imageio.ImageIO;
+
 import org.apache.commons.io.FilenameUtils;
 
 import org.apache.hadoop.fs.Path;
@@ -30,6 +36,22 @@ public class SparkMaps {
 			buffer.append(' ');
 		}
 		return buffer.toString();
+	}
+	
+	private static void intToImg(int[][] pxls, String path){
+	    int[] pxlsr = new int[dem3Size * dem3Size];
+	    int k = 0;
+	    for(int i = 0 ; i < dem3Size ; i++)
+	    	for(int j = 0 ; j < dem3Size ; j++)
+	    		pxlsr[k++] = pxls[i][j];
+	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_BYTE_GRAY);
+		WritableRaster raster = outputImage.getRaster();
+		raster.setSamples(0, 0, dem3Size, dem3Size, 0, pxlsr);
+		try {
+			ImageIO.write(outputImage, "png", new File(path));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public static void main(String[] args) {
@@ -72,7 +94,7 @@ public class SparkMaps {
 				}
 			}
 		}
-		PrintWriter writer;
+		/*PrintWriter writer;
 		try {
 			//File f = new File(FilenameUtils.removeExtension(filePath) + ".pgm");
 			String newPath = "test.pgm"; //"user/pascal/pgm/" + filePath.substring(filePath.length() - 11, filePath.length() - 4) + ".pgm";
@@ -89,7 +111,8 @@ public class SparkMaps {
 			e.printStackTrace();
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
-		}
+		}*/
+		intToImg(data, "mary.png");
 	}	
 
 	
