@@ -5,12 +5,17 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+
 import javax.imageio.ImageIO;
 
+import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.input.PortableDataStream;
+import org.apache.spark.rdd.SequenceFileRDDFunctions;
 
 public class SparkMaps {
 	
@@ -32,22 +37,20 @@ public class SparkMaps {
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
-		int data[] = new int[dem3Size * dem3Size];
 		JavaPairRDD<String, PortableDataStream> rdd;
 		String filePath = args[0];
 		rdd = context.binaryFiles(filePath);
-		rdd.foreach(t -> {
-			String path = t._1;
-			PortableDataStream pds = t._2;
-			byte[] arr = pds.toArray();
-			String s = path.substring(path.length() - 11, path.length());
-			/*double lat, lng;
+		JavaPairRDD<String, int[]> rdd2 = rdd.mapValues((PortableDataStream t) -> {
+			byte[] arr = t.toArray();
+			/*String s = path.substring(path.length() - 11, path.length());
+			double lat, lng;
 			lat = Double.parseDouble(s.substring(1, 3));
 			lng = Double.parseDouble(s.substring(4, 7));
 			if (s.charAt(0) == 'S' || s.charAt(0) == 's') lat *= -1;
 	        if (s.charAt(3) == 'W' || s.charAt(3) == 'w') lng *= -1;*/
 			int i = 0;
 			int j = 0;
+			int data[] = new int[dem3Size * dem3Size];
 			for (int k = 0 ; k < arr.length ; k+=2) {
 				if (i < dem3Size) {
 					byte[] buffer = new byte[2];
@@ -70,9 +73,13 @@ public class SparkMaps {
 					}
 				}
 			}
-			String name = s.substring(0, 8);
-			intToImg(data, name + "png");
+			//intToImg(data, name + "png");
+			return data;
 		});
+		/*SequenceFileRDDFunctions sfrf = new SequenceFileRDDFunctions(rdd2,
+				String.class, int[].class, );
+		sfrf.saveAsSequenceFile("hdfs:///user/pascal/seqf", GzipCodec);*/
+		// .saveAsNewAPIHadoopFile("hdfs:///user/pascal/seqf", String.class, int[].class, SequenceFileOutputFormat.class);
 		context.close();
 	}	
 	
