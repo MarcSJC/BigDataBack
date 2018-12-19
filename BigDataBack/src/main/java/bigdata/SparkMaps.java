@@ -32,9 +32,12 @@ public class SparkMaps {
 		}
 	}
 	
-	public class StringWritable extends ArrayWritable { //RIP Text
+	public class StringWritable extends Text { //RIP Text
 		public StringWritable() {
-			super(Text.class);
+			super();
+		}
+		public StringWritable(String s) {
+			super(s);
 		}
 	}
 	
