@@ -10,7 +10,7 @@ import java.util.Arrays;
 import javax.imageio.ImageIO;
 
 import org.apache.hadoop.io.compress.GzipCodec;
-import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapred.SequenceFileOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -80,6 +80,7 @@ public class SparkMaps {
 				String.class, int[].class, );
 		sfrf.saveAsSequenceFile("hdfs:///user/pascal/seqf", GzipCodec);*/
 		// .saveAsNewAPIHadoopFile("hdfs:///user/pascal/seqf", String.class, int[].class, SequenceFileOutputFormat.class);
+		rdd2.saveAsHadoopFile(args[1], String.class, int[].class, SequenceFileOutputFormat.class);
 		context.close();
 	}	
 	
