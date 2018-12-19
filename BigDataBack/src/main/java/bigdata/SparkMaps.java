@@ -2,6 +2,8 @@ package bigdata;
 
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -12,6 +14,8 @@ import javax.imageio.ImageIO;
 import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableName;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapred.SequenceFileOutputFormat;
 import org.apache.spark.SparkConf;
@@ -32,12 +36,27 @@ public class SparkMaps {
 		}
 	}
 	
-	public class StringWritable extends Text { //RIP Text
+	public class StringWritable implements Writable { //RIP Text
+		private Text text;
 		public StringWritable() {
-			super();
+			text = new Text();
 		}
 		public StringWritable(String s) {
-			super(s);
+			text = new Text(s);
+		}
+		public Text getText() {
+			return text;
+		}
+		public void setText(Text t) {
+			text = t;
+		}
+		@Override
+		public void readFields(DataInput arg0) throws IOException {
+			text.readFields(arg0);
+		}
+		@Override
+		public void write(DataOutput arg0) throws IOException {
+			text.write(arg0);
 		}
 	}
 	
