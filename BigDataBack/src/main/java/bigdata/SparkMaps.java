@@ -16,6 +16,7 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableName;
+import org.apache.hadoop.io.WritableUtils;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapred.SequenceFileOutputFormat;
 import org.apache.spark.SparkConf;
@@ -37,26 +38,26 @@ public class SparkMaps {
 	}
 	
 	public class StringWritable implements Writable { //RIP Text
-		private Text text;
+		private String text;
 		public StringWritable() {
-			text = new Text();
+			text = "";
 		}
 		public StringWritable(String s) {
-			text = new Text(s);
+			text = s;
 		}
-		public Text getText() {
+		public String getText() {
 			return text;
 		}
-		public void setText(Text t) {
-			text = t;
+		public void setText(String s) {
+			text = s;
 		}
 		@Override
 		public void readFields(DataInput arg0) throws IOException {
-			text.readFields(arg0);
+			WritableUtils.readString(arg0);
 		}
 		@Override
 		public void write(DataOutput arg0) throws IOException {
-			text.write(arg0);
+			WritableUtils.writeString(arg0, text);
 		}
 	}
 	
