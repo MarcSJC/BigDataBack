@@ -8,8 +8,9 @@ import java.nio.ByteBuffer;
 import javax.imageio.ImageIO;
 
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.input.PortableDataStream;
 
 public class SparkMaps {
 	
@@ -32,42 +33,48 @@ public class SparkMaps {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
 		int data[] = new int[dem3Size * dem3Size];
-		JavaRDD<byte[]> rdd;
+		JavaPairRDD<String, PortableDataStream> rdd;
 		String filePath = args[0];
-		rdd = context.binaryRecords(filePath, 2);
-		//rdd = rdd.repartition(4);
-		rdd.coalesce(4, false);
-		double lat, lng;
-		String s = filePath.substring(filePath.length() - 11, filePath.length());
-		lat = Double.parseDouble(s.substring(1, 3));
-		lng = Double.parseDouble(s.substring(4, 7));
-		if (filePath.charAt(0) == 'S' || filePath.charAt(0) == 's') lat *= -1;
-        if (filePath.charAt(3) == 'W' || filePath.charAt(3) == 'w') lng *= -1;
-		System.out.println(">>>>>>>>>>>>>>>>>>> lat, lng : " + lat + ", " + lng);
-		int i = 0;
-		int j = 0;
-		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
-		for (byte[] b : rdd.collect()) {
-			if (i < dem3Size) {
-				short value = 0;
-				//-------------
-				ByteBuffer buf = ByteBuffer.wrap(b);
-				value = buf.getShort();
-				//-------------
-				if (value < 0) value += 256;
-				if (value > 255) value = maxh;
-				data[i * dem3Size + j] = value;
-				if (j >= dem3Size - 1) {
-					i++;
-					j = 0;
-				}
-				else {
-					j++;
+		rdd = context.binaryFiles(filePath);
+		rdd.foreach(t -> {
+			String path = t._1;
+			PortableDataStream pds = t._2;
+			byte[] arr = pds.toArray();
+			String s = path.substring(path.length() - 11, path.length());
+			/*double lat, lng;
+			lat = Double.parseDouble(s.substring(1, 3));
+			lng = Double.parseDouble(s.substring(4, 7));
+			if (s.charAt(0) == 'S' || s.charAt(0) == 's') lat *= -1;
+	        if (s.charAt(3) == 'W' || s.charAt(3) == 'w') lng *= -1;*/
+			int i = 0;
+			int j = 0;
+			for (int k = 0 ; k < arr.length ; k+=2) {
+				if (i < dem3Size) {
+					byte[] buffer = new byte[2];
+					buffer[0] = arr[k];
+					buffer[1] = arr[k+1];
+					short value = 0;
+					//-------------
+					ByteBuffer buf = ByteBuffer.wrap(buffer);
+					value = buf.getShort();
+					//-------------
+					if (value < 0) value += 256;
+					if (value > 255) value = maxh;
+					data[i * dem3Size + j] = value;
+					if (j >= dem3Size - 1) {
+						i++;
+						j = 0;
+					}
+					else {
+						j++;
+					}
 				}
 			}
-		}
-		intToImg(data, "mary.png");
+			String name = s.substring(0, 8);
+			intToImg(data, name + "png");
+		});
+		context.close();
 	}	
-
+	
 	
 }
