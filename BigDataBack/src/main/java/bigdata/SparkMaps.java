@@ -9,6 +9,9 @@ import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapred.SequenceFileOutputFormat;
 import org.apache.spark.SparkConf;
@@ -22,6 +25,12 @@ public class SparkMaps {
 	final static int dem3Size= 1201;
 	static short minh = 0;
 	static short maxh = 255;
+	
+	public class IntArrayWritable extends ArrayWritable {
+		public IntArrayWritable() {
+			super(IntWritable.class);
+		}
+	}
 	
 	private static void intToImg(int[] pxls, String path){
 	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_BYTE_GRAY);
@@ -80,7 +89,7 @@ public class SparkMaps {
 				String.class, int[].class, );
 		sfrf.saveAsSequenceFile("hdfs:///user/pascal/seqf", GzipCodec);*/
 		// .saveAsNewAPIHadoopFile("hdfs:///user/pascal/seqf", String.class, int[].class, SequenceFileOutputFormat.class);
-		rdd2.saveAsHadoopFile(args[1], String.class, int[].class, SequenceFileOutputFormat.class);
+		rdd2.saveAsHadoopFile(args[1], Text.class, IntArrayWritable.class, SequenceFileOutputFormat.class);
 		context.close();
 	}	
 	
