@@ -3,50 +3,24 @@ package bigdata;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-
 import javax.imageio.ImageIO;
 
-import org.apache.commons.io.FilenameUtils;
-
-import org.apache.hadoop.fs.Path;
 import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.input.PortableDataStream;
-
-import scala.Tuple2;
 
 public class SparkMaps {
 	
 	final static int dem3Size= 1201;
-	static int minh = 0;
-	static int maxh = 255;
+	static short minh = 0;
+	static short maxh = 255;
 	
-	private static String dataLineToString(int[] dataLine) {
-		StringBuffer buffer = new StringBuffer();
-		for (int i = 0 ; i < dataLine.length ; ++i) {
-			buffer.append(dataLine[i] - minh);
-			buffer.append(' ');
-		}
-		return buffer.toString();
-	}
-	
-	private static void intToImg(int[][] pxls, String path){
-	    int[] pxlsr = new int[dem3Size * dem3Size];
-	    int k = 0;
-	    for(int i = 0 ; i < dem3Size ; i++)
-	    	for(int j = 0 ; j < dem3Size ; j++)
-	    		pxlsr[k++] = pxls[i][j];
+	private static void intToImg(int[] pxls, String path){
 	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_BYTE_GRAY);
 		WritableRaster raster = outputImage.getRaster();
-		raster.setSamples(0, 0, dem3Size, dem3Size, 0, pxlsr);
+		raster.setSamples(0, 0, dem3Size, dem3Size, 0, pxls);
 		try {
 			ImageIO.write(outputImage, "png", new File(path));
 		} catch (IOException e) {
@@ -57,13 +31,12 @@ public class SparkMaps {
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
-		int data[][] = new int[dem3Size][dem3Size];
+		int data[] = new int[dem3Size * dem3Size];
 		JavaRDD<byte[]> rdd;
 		String filePath = args[0];
 		rdd = context.binaryRecords(filePath, 2);
 		//rdd = rdd.repartition(4);
 		rdd.coalesce(4, false);
-		byte buffer[] = new byte[2];
 		double lat, lng;
 		String s = filePath.substring(filePath.length() - 11, filePath.length());
 		lat = Double.parseDouble(s.substring(1, 3));
@@ -71,20 +44,19 @@ public class SparkMaps {
 		if (filePath.charAt(0) == 'S' || filePath.charAt(0) == 's') lat *= -1;
         if (filePath.charAt(3) == 'W' || filePath.charAt(3) == 'w') lng *= -1;
 		System.out.println(">>>>>>>>>>>>>>>>>>> lat, lng : " + lat + ", " + lng);
-		int id = 0;
 		int i = 0;
 		int j = 0;
 		System.out.println(">>>>>>>>>>>>>>>>>>> rdd count : " + rdd.count());
 		for (byte[] b : rdd.collect()) {
 			if (i < dem3Size) {
-				int value = 0;
+				short value = 0;
 				//-------------
 				ByteBuffer buf = ByteBuffer.wrap(b);
 				value = buf.getShort();
 				//-------------
 				if (value < 0) value += 256;
 				if (value > 255) value = maxh;
-				data[i][j] = value;
+				data[i * dem3Size + j] = value;
 				if (j >= dem3Size - 1) {
 					i++;
 					j = 0;
@@ -94,24 +66,6 @@ public class SparkMaps {
 				}
 			}
 		}
-		/*PrintWriter writer;
-		try {
-			//File f = new File(FilenameUtils.removeExtension(filePath) + ".pgm");
-			String newPath = "test.pgm"; //"user/pascal/pgm/" + filePath.substring(filePath.length() - 11, filePath.length() - 4) + ".pgm";
-			File f = new File(newPath);
-			writer = new PrintWriter(f, "UTF-8");
-			writer.println("P2");
-			writer.println(dem3Size + " " + dem3Size);
-			writer.println(maxh);
-			for (int k = 0 ; k < data.length ; ++k) {
-				writer.println(dataLineToString(data[k]));
-			}
-			writer.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}*/
 		intToImg(data, "mary.png");
 	}	
 
