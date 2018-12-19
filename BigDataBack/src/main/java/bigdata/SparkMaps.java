@@ -32,6 +32,12 @@ public class SparkMaps {
 		}
 	}
 	
+	public class StringWritable extends ArrayWritable { //RIP Text
+		public StringWritable() {
+			super(Text.class);
+		}
+	}
+	
 	private static void intToImg(int[] pxls, String path){
 	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_BYTE_GRAY);
 		WritableRaster raster = outputImage.getRaster();
@@ -89,7 +95,7 @@ public class SparkMaps {
 				String.class, int[].class, );
 		sfrf.saveAsSequenceFile("hdfs:///user/pascal/seqf", GzipCodec);*/
 		// .saveAsNewAPIHadoopFile("hdfs:///user/pascal/seqf", String.class, int[].class, SequenceFileOutputFormat.class);
-		rdd2.saveAsHadoopFile(args[1], Text.class, IntArrayWritable.class, SequenceFileOutputFormat.class);
+		rdd2.saveAsHadoopFile(args[1], StringWritable.class, IntArrayWritable.class, SequenceFileOutputFormat.class);
 		context.close();
 	}	
 	
