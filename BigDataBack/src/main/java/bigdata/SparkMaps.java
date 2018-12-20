@@ -31,36 +31,6 @@ public class SparkMaps {
 	static short minh = 0;
 	static short maxh = 255;
 	
-	public class IntArrayWritable extends ArrayWritable {
-		public IntArrayWritable() {
-			super(IntWritable.class);
-		}
-	}
-	
-	public class StringWritable implements Writable { //RIP Text
-		private String text;
-		public StringWritable() {
-			text = "";
-		}
-		public StringWritable(String s) {
-			text = s;
-		}
-		public String getText() {
-			return text;
-		}
-		public void setText(String s) {
-			text = s;
-		}
-		@Override
-		public void readFields(DataInput arg0) throws IOException {
-			WritableUtils.readString(arg0);
-		}
-		@Override
-		public void write(DataOutput arg0) throws IOException {
-			WritableUtils.writeString(arg0, text);
-		}
-	}
-	
 	private static void intToImg(int[] pxls, String path){
 	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_BYTE_GRAY);
 		WritableRaster raster = outputImage.getRaster();
@@ -78,8 +48,8 @@ public class SparkMaps {
 		JavaPairRDD<String, PortableDataStream> rdd;
 		String filePath = args[0];
 		rdd = context.binaryFiles(filePath);
-		JavaPairRDD<String, int[]> rdd2 = rdd.mapValues((PortableDataStream t) -> {
-			byte[] arr = t.toArray();
+		JavaPairRDD<Text, IntArrayWritable> rdd2 = rdd.mapToPair((scala.Tuple2<String, PortableDataStream> t) -> {
+			byte[] arr = t._2.toArray();
 			/*String s = path.substring(path.length() - 11, path.length());
 			double lat, lng;
 			lat = Double.parseDouble(s.substring(1, 3));
@@ -112,13 +82,16 @@ public class SparkMaps {
 				}
 			}
 			//intToImg(data, name + "png");
-			return data;
+			Text newKey = new Text(t._1);
+			IntArrayWritable newVal = new IntArrayWritable(data);
+			scala.Tuple2<Text, IntArrayWritable> res = new scala.Tuple2<Text, IntArrayWritable>(newKey, newVal);
+			return res;
 		});
 		/*SequenceFileRDDFunctions sfrf = new SequenceFileRDDFunctions(rdd2,
 				String.class, int[].class, );
 		sfrf.saveAsSequenceFile("hdfs:///user/pascal/seqf", GzipCodec);*/
 		// .saveAsNewAPIHadoopFile("hdfs:///user/pascal/seqf", String.class, int[].class, SequenceFileOutputFormat.class);
-		rdd2.saveAsHadoopFile(args[1], StringWritable.class, IntArrayWritable.class, SequenceFileOutputFormat.class);
+		rdd2.saveAsHadoopFile(args[1], Text.class, IntArrayWritable.class, SequenceFileOutputFormat.class);
 		context.close();
 	}	
 	
