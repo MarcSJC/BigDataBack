@@ -8,7 +8,7 @@ import org.apache.hadoop.io.ArrayWritable;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 
-public class IntArrayWritable extends ArrayWritable {
+/*public class IntArrayWritable extends ArrayWritable {
 
 	public IntArrayWritable(IntWritable[] values) {
 		super(IntWritable.class, values);
@@ -26,9 +26,9 @@ public class IntArrayWritable extends ArrayWritable {
 		super(IntWritable.class, toIntWritable(array));
 	}
 	
-}
+}*/
 
-/*public class IntArrayWritable implements Writable {
+public class IntArrayWritable implements Writable {
 	private int[] array;
 	public IntArrayWritable() {}
 	public IntArrayWritable(int[] array) {
@@ -59,4 +59,4 @@ public class IntArrayWritable extends ArrayWritable {
             out.writeInt(array[i]);
         }
 	}
-}*/
+}
