@@ -17,7 +17,9 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableName;
 import org.apache.hadoop.io.WritableUtils;
+import org.apache.hadoop.io.compress.BZip2Codec;
 import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.hadoop.io.compress.SnappyCodec;
 import org.apache.hadoop.mapred.SequenceFileOutputFormat;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -81,17 +83,12 @@ public class SparkMaps {
 					}
 				}
 			}
-			//intToImg(data, name + "png");
 			Text newKey = new Text(t._1);
 			IntArrayWritable newVal = new IntArrayWritable(data);
 			scala.Tuple2<Text, IntArrayWritable> res = new scala.Tuple2<Text, IntArrayWritable>(newKey, newVal);
 			return res;
 		});
-		/*SequenceFileRDDFunctions sfrf = new SequenceFileRDDFunctions(rdd2,
-				String.class, int[].class, );
-		sfrf.saveAsSequenceFile("hdfs:///user/pascal/seqf", GzipCodec);*/
-		// .saveAsNewAPIHadoopFile("hdfs:///user/pascal/seqf", String.class, int[].class, SequenceFileOutputFormat.class);
-		rdd2.saveAsHadoopFile(args[1], Text.class, IntArrayWritable.class, SequenceFileOutputFormat.class);
+		rdd2.saveAsHadoopFile(args[1], Text.class, IntArrayWritable.class, SequenceFileOutputFormat.class, BZip2Codec.class);
 		context.close();
 	}	
 	

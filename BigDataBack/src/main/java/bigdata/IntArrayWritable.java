@@ -4,9 +4,31 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 
-public class IntArrayWritable implements Writable {
+public class IntArrayWritable extends ArrayWritable {
+
+	public IntArrayWritable(IntWritable[] values) {
+		super(IntWritable.class, values);
+	}
+	
+	private static IntWritable[] toIntWritable(int[] array) {
+		IntWritable[] values = new IntWritable[array.length];
+		for (int i = 0 ; i < array.length ; i++) {
+			values[i] = new IntWritable(array[i]);
+		}
+		return values;
+	}
+	
+	public IntArrayWritable(int[] array) {
+		super(IntWritable.class, toIntWritable(array));
+	}
+	
+}
+
+/*public class IntArrayWritable implements Writable {
 	private int[] array;
 	public IntArrayWritable() {}
 	public IntArrayWritable(int[] array) {
@@ -37,4 +59,4 @@ public class IntArrayWritable implements Writable {
             out.writeInt(array[i]);
         }
 	}
-}
+}*/
