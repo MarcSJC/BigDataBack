@@ -32,38 +32,6 @@ public class SparkMaps {
 	final static int dem3Size = 1201;
 	static short minh = 0;
 	static short maxh = 255;
-	
-	private static int getIntFromColor(int i) {
-		int red, green, blue;
-		blue = (byte) (i & 0xFF);
-		green = (byte) ((i >> 6) & 0xFF);
-		red = (byte) ((i >> 16) & 0xFF);
-	    red = (red << 16) & 0x00FF0000;
-	    green = (green << 8) & 0x0000FF00;
-	    blue = blue & 0x000000FF;
-
-	    return 0xFF000000 | red | green | blue;
-	}
-	
-	private static int[] getIntArrayRGB(int[] orig) {
-		int[] res = new int[orig.length];
-		for (int i = 0 ; i < orig.length ; i++) {
-			res[i] = getIntFromColor(orig[i]);
-		}
-		return res;
-	}
-	
-	private static void intToImg(int[] pxls, String path){
-	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_INT_RGB);
-		WritableRaster raster = outputImage.getRaster();
-		//raster.setSamples(0, 0, dem3Size, dem3Size, 0, pxls);
-		outputImage.setRGB(0, 0, dem3Size, dem3Size, getIntArrayRGB(pxls), 0, dem3Size);
-		try {
-			ImageIO.write(outputImage, "png", new File(path));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
 
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
@@ -94,7 +62,7 @@ public class SparkMaps {
 					//-------------
 					//if (value < 0) value += 256;
 					//if (value > 255) value = maxh;
-					minh = (short) Integer.min(value, minh);
+					//minh = (short) Integer.min(value, minh);
 					maxh = (short) Integer.max(value, maxh);
 					data[i * dem3Size + j] = value;
 					if (j >= dem3Size - 1) {
@@ -111,22 +79,8 @@ public class SparkMaps {
 			scala.Tuple2<Text, IntArrayWritable> res = new scala.Tuple2<Text, IntArrayWritable>(newKey, newVal);
 			return res;
 		});
+		rdd2.repartition(434);
 		rdd2.saveAsHadoopFile(args[1], Text.class, IntArrayWritable.class, SequenceFileOutputFormat.class, BZip2Codec.class);
-
-		JavaPairRDD<Text, IntArrayWritable> rdd3 = context.sequenceFile(args[1], Text.class, IntArrayWritable.class);
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rdd3 : " + rdd3.count());
-		JavaPairRDD<String, int[]> rdd4 = rdd3.mapToPair((scala.Tuple2<Text, IntArrayWritable> t) -> {
-			String newKey = t._1.toString();
-			int[] newVal = t._2.getArray();
-			scala.Tuple2<String, int[]> res = new scala.Tuple2<String, int[]>(newKey, newVal);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> key : " + newKey);
-			return res;
-		});
-		int m = 0;
-		for (scala.Tuple2<String, int[]> t : rdd4.collect()) {
-			intToImg(t._2, "mary"+m+".png");
-			m++;
-		}
 		context.close();
 	}	
 	
