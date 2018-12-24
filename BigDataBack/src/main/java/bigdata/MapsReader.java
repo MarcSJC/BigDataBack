@@ -1,5 +1,6 @@
 package bigdata;
 
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.File;
@@ -15,25 +16,34 @@ import org.apache.spark.api.java.JavaSparkContext;
 public class MapsReader {
 	
 	final static int dem3Size = 1201;
+	private static final Color SEA_BLUE = new Color(19455);
+	//private static final Color EARTH_YELLOW = new Color(8421416);
+	private static final Color SNOW_WHITE = new Color(8421416);
 	static short minh = 0;
-	static short maxh = 255;
+	static short maxh = 9000;
+	
+	private static int colorGradient(double pred, double pgreen, double pblue) {
+		int r = (int) (SEA_BLUE.getRed() * pred + SNOW_WHITE.getRed() * (1 - pred));
+		int g = (int) (SEA_BLUE.getGreen() * pgreen + SNOW_WHITE.getGreen() * (1 - pgreen));
+		int b = (int) (SEA_BLUE.getBlue() * pblue + SNOW_WHITE.getBlue() * (1 - pblue));
+		return new Color(r, g, b).getRGB();
+	}
 	
 	private static int getIntFromColor(int i) {
-		//int gray = (int) Math.round(255.0 * (i - minh) / (maxh - minh));
 		int red, green, blue;
 		red = (byte) (i & 0xFF);
-		green = (byte) ((i >> 4) & 0xFF);
+		green = (byte) ((i >> 8) & 0xFF);
 		blue = (byte) ((i >> 16) & 0xFF);
-	    /*red = (gray << 16) & 0x00FF0000;
-	    green = (gray << 8) & 0x0000FF00;
-	    blue = gray & 0x000000FF;
-	    return 0xFF000000 | red | green | blue;*/
-		red = (int) (255.0 * (Math.log(red) / Math.log(maxh)));
-		green = (int) (255.0 * (Math.log(green) / Math.log(maxh)));
-		blue = (int) (255.0 * (Math.log(blue) / Math.log(maxh)));
-		int rgb = red;
-		rgb = (rgb << 8) + green;
-		rgb = (rgb << 8) + blue;
+		int rgb;
+		if (i <= minh) {
+			rgb = SEA_BLUE.getRGB();
+		}
+		else {
+			double pred = Double.max(0, (Math.log(red) / Math.log(maxh)));
+			double pgreen = Double.max(0, (Math.log(green) / Math.log(maxh)));
+			double pblue = Double.max(0, (Math.log(blue) / Math.log(maxh)));
+			rgb = colorGradient(pred, pgreen, pblue);
+		}
 	    return rgb;
 	}
 	
@@ -48,7 +58,6 @@ public class MapsReader {
 	private static void intToImg(int[] pxls, String path){
 	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_INT_RGB);
 		WritableRaster raster = outputImage.getRaster();
-		//raster.setSamples(0, 0, dem3Size, dem3Size, 0, pxls);
 		outputImage.setRGB(0, 0, dem3Size, dem3Size, getIntArrayRGB(pxls), 0, dem3Size);
 		try {
 			ImageIO.write(outputImage, "png", new File(path));
