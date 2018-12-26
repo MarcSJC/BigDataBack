@@ -76,31 +76,6 @@ public class MapsReader {
 		}
 	}
 	
-	/*private static scala.Tuple2<Double, Double> mercator(double lat, double lng, int zoom) {
-		double radlng = lng * Math.PI / 180;
-		double radlat = lat * Math.PI / 180;
-		double x = (256 / (2 * Math.PI)) * (2 ^ zoom) * (radlng + Math.PI);
-		double y = (256 / (2 * Math.PI)) * (2 ^ zoom) * (Math.PI - Math.log(Math.tan((Math.PI / 4) + (radlat / 2))));
-		return new scala.Tuple2<Double, Double>(x, y);
-	}*/
-	
-	private static String getTileNumber(double lat, double lon, int zoom) {
-		int xtile = (int) Math.floor((lon + 180) / 360 * (1<<zoom) ) ;
-		int ytile = (int) Math.floor((1 - Math.log(Math.tan(Math.toRadians(lat)) + 1 / Math.cos(Math.toRadians(lat))) / Math.PI) / 2 * (1<<zoom) ) ;
-		if (xtile < 0)
-			xtile = 0;
-		if (xtile >= (1<<zoom))
-			xtile = ((1<<zoom) - 1);
-		if (ytile < 0)
-			ytile = 0;
-		if (ytile >= (1<<zoom))
-			ytile = ((1<<zoom) - 1);
-		/*scala.Tuple2<Double, Double> t = mercator(lat, lon, zoom);
-		double xtile = t._1$mcD$sp();
-		double ytile = t._2$mcD$sp();*/
-		return("testtiles/" + zoom + "/" + xtile + "/" + ytile);
-	}
-	
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
@@ -115,17 +90,15 @@ public class MapsReader {
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> key : " + newKey);
 			return res;
 		});
+		int zoom = 7;
 		for (scala.Tuple2<String, int[]> t : rdd4.collect()) {
 			// --- Coordinates ---
 			String s = t._1.substring(t._1.length() - 11, t._1.length());
-			double lat, lng;
-			lat = Double.parseDouble(s.substring(1, 3));
-			lng = Double.parseDouble(s.substring(4, 7));
-			if (s.charAt(0) == 'S' || s.charAt(0) == 's') lat *= -1;
-	        if (s.charAt(3) == 'W' || s.charAt(3) == 'w') lng *= -1;
+			int lat, lng;
+			lat = Integer.parseInt(s.substring(1, 3)) + 90;
+			lng = Integer.parseInt(s.substring(4, 7)) + 180;
 	        // --- Test tiles ---
-	        String output = getTileNumber(lat, lng, 3);
-	        String parentpath = args[1] + "/" + output + ".png";
+	        String parentpath = args[1] + "/testtiles/" + zoom + "/" + lat + "/" + lng + ".png";
 	        System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> PATH (" + lat + ", " + lng + ") : " + parentpath);
 	        File parentDir = new File(parentpath).getParentFile();
 	        if (parentDir != null && !parentDir.exists()) {
