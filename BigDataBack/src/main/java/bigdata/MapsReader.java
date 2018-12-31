@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -17,7 +18,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
-import scala.Tuple4;
+import scala.Tuple2;
 
 public class MapsReader {
 	
@@ -27,7 +28,8 @@ public class MapsReader {
 	private static final Color SNOW_WHITE = new Color(8421416);
 	private static short minh = 0;
 	private static short maxh = 9000;
-	private static double zoom = (Math.log(180) / Math.log(2)) + 1;
+	private static int zoom = 9;
+	private final static double degreePerBaseTile = 360 / 512;
 	
 	private static int colorGradient(double pred, double pgreen, double pblue) {
 		int r = (int) (SEA_BLUE.getRed() * pred + SNOW_WHITE.getRed() * (1 - pred));
@@ -62,11 +64,11 @@ public class MapsReader {
 		return res;
 	}
 	
-	private static String getTileNumber(double lat, double lon, double zoom) {
-		double n = Math.pow(2, zoom);
+	private static Tuple2<Integer, Integer> getTileNumber(double lat, double lon, int zoom) {
+		int n = (int) Math.pow(2, zoom);
 		int xtile = (int) (n * ((lon + 180) / 360));
 		int ytile = (int) (n * (1 - (Math.log(Math.tan(lat) + (1 / Math.cos(lat))) / Math.PI)) / 2);
-		return ((int) Math.floor(zoom) + "/" + xtile + "/" + ytile);
+		return new Tuple2<Integer, Integer>(xtile, ytile);
 	}
 	
 	private static BufferedImage resize(BufferedImage img, int newW, int newH) {
@@ -106,10 +108,11 @@ public class MapsReader {
 		}
 	}
 	
-	private static void saveAllImages(JavaPairRDD<String, scala.Tuple4<Integer, Integer, String, ImageIcon>> r) {
-		r.foreach((scala.Tuple2<String, scala.Tuple4<Integer, Integer, String, ImageIcon>> t) -> {
-			String imgpath = t._2._3();
-			BufferedImage img = toBufferedImage(t._2._4());
+	private static void saveAllImages(JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9, String dirpath) {
+		rddzm9.foreach((Tuple2<Tuple2<Integer, Integer>, ImageIcon> t) -> {
+			String imgpath = dirpath + "/testtiles/" + ".png";
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> IMGPATH (zoom " + zoom + ") : " + imgpath);
+			BufferedImage img = toBufferedImage(t._2);
 			saveImg(img, imgpath);
 		});
 	}
@@ -122,75 +125,56 @@ public class MapsReader {
 		String rawpath = args[0];
 		JavaPairRDD<Text, IntArrayWritable> rddRaw = context.sequenceFile(rawpath, Text.class, IntArrayWritable.class);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddRaw : " + rddRaw.count());
-		JavaPairRDD<String, int[]> rdd = rddRaw.mapToPair((scala.Tuple2<Text, IntArrayWritable> t) -> {
-			String newKey = t._1.toString();
+		JavaPairRDD<Tuple2<Integer, Integer>, int[]> rdd = rddRaw.mapToPair((Tuple2<Text, IntArrayWritable> t) -> {
+			String name = t._1.toString();
 			int[] newVal = t._2.getArray();
-			scala.Tuple2<String, int[]> res = new scala.Tuple2<String, int[]>(newKey, newVal);
-			return res;
-		}).cache();
-		//
-		JavaPairRDD<String, scala.Tuple4<Integer, Integer, String, ImageIcon>> rddBaseZoom = rdd.mapToPair((scala.Tuple2<String, int[]> t) -> {
 			// --- Coordinates ---
-			String s = t._1.substring(t._1.length() - 11, t._1.length());
+			String s = name.substring(name.length() - 11, name.length());
 			int lat, lng;
 			lat = Integer.parseInt(s.substring(1, 3));
 			lng = Integer.parseInt(s.substring(4, 7));
 			if (s.charAt(0) == 'S' || s.charAt(0) == 's') lat *= -1;
 			if (s.charAt(3) == 'W' || s.charAt(3) == 'w') lng *= -1;
-			String skey = (lat - (lat % 2)) + "," + (lng - (lng % 2));
-	        // --- Test tiles ---
-			String filepath = args[1] + "/testtiles/" + getTileNumber(lat, lng, zoom) + ".png";
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FILEPATH (zoom " + zoom + ") : " + filepath);
+			// --- Results ---
+			Tuple2<Integer, Integer> latlng = new Tuple2<Integer, Integer>(lat, lng);
+			Tuple2<Tuple2<Integer, Integer>, int[]> res = new Tuple2<Tuple2<Integer, Integer>, int[]>(latlng, newVal);
+			return res;
+		}).cache();
+		//
+		JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9 = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
+			// --- Coordinates ---
+			int lat, lng;
+			lat = t._1._1;
+			lng = t._1._2;
+			ArrayList<Tuple2<Tuple2<Integer, Integer>, ImageIcon>> list = new ArrayList<Tuple2<Tuple2<Integer, Integer>, ImageIcon>>();
+			for (int i = 0 ; i < 4 ; i++) {
+				Tuple2<Integer, Integer> key;
+				switch(i) {
+					case 1 :
+						key = getTileNumber(lat + 1, lng, zoom);
+						break;
+					case 2 :
+						key = getTileNumber(lat, lng + 1, zoom);
+						break;
+					case 3 :
+						key = getTileNumber(lat + 1, lng + 1, zoom);
+						break;
+					default :
+						key = getTileNumber(lat, lng, zoom);
+				}
+				ImageIcon img;
+				Tuple2<Tuple2<Integer, Integer>, ImageIcon> item = new Tuple2<Tuple2<Integer, Integer>, ImageIcon>(key, img);
+			}
 	        // --- Get image ---
 			ImageIcon img = intToImg(t._2);
 			// --- Return ---
-			scala.Tuple4<Integer, Integer, String, ImageIcon> tuple = new scala.Tuple4<Integer, Integer, String, ImageIcon>(lat, lng, filepath, img);
-			return new scala.Tuple2<String, scala.Tuple4<Integer, Integer, String, ImageIcon>>(skey, tuple);
+			return list.iterator();
 		}).cache();
 		// --- Save as image ---
 		rddRaw.unpersist();
-		saveAllImages(rddBaseZoom);
+		saveAllImages(rddzm9, args[1]);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDD1");
-		//
-		zoom = zoom - 1;
-		//
-		JavaPairRDD<String, Iterable<Tuple4<Integer, Integer, String, ImageIcon>>> rddGby = rddBaseZoom.groupByKey().cache();
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddGby : " + rddGby.count());
-		rddBaseZoom.unpersist();
-		JavaPairRDD<String, scala.Tuple4<Integer, Integer, String, ImageIcon>> rddzm1 = rddGby.mapToPair((scala.Tuple2<String, Iterable<scala.Tuple4<Integer, Integer, String, ImageIcon>>> it) -> {
-			String skey = it._1;
-			BufferedImage img = new BufferedImage(tileSize * 2, tileSize * 2, BufferedImage.TYPE_INT_RGB);
-			Graphics2D g = img.createGraphics();
-			g.setBackground(SEA_BLUE);
-			g.setColor(SEA_BLUE);
-			g.clearRect(0, 0, tileSize * 2, tileSize * 2);
-			// --- Coordinates ---
-			int latmin = dem3Size;
-			int lngmin = dem3Size;
-			int itsize = 0;
-			for (scala.Tuple4<Integer, Integer, String, ImageIcon> t : it._2) {
-				latmin = Integer.min(latmin, t._1());
-				lngmin = Integer.min(lngmin, t._2());
-				BufferedImage imgpart = toBufferedImage(t._4());
-				int sx = Math.abs((t._1() - 1) % 2);
-				int sy = Math.abs((t._2() - 1) % 2);
-				g.drawImage(imgpart, sx * tileSize, sy * tileSize, (sx + 1) * tileSize, (sy + 1) * tileSize, null);
-				itsize++;
-			}
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ITERABLE : " + skey + "  SIZE : " + itsize);
-	        // --- Test tiles ---
-	        String filepath = args[1] + "/testtiles/" + getTileNumber(latmin, lngmin, zoom) + ".png";
-	        System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FILEPATH (zoom " + zoom + ") (" + skey + ") : " + filepath);
-			// --- Return ---
-	        ImageIcon resic = new ImageIcon(img);
-			scala.Tuple4<Integer, Integer, String, ImageIcon> tuple = new scala.Tuple4<Integer, Integer, String, ImageIcon>(latmin, lngmin, filepath, resic);
-			return new scala.Tuple2<String, scala.Tuple4<Integer, Integer, String, ImageIcon>>(skey, tuple);
-		}).cache();
-		// --- Save as image ---
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddzm1 : " + rddzm1.count());
-		saveAllImages(rddzm1);
-		rddGby.unpersist();
-		rddzm1.unpersist();
+		rddzm9.unpersist();
 		context.close();
 	}
 
