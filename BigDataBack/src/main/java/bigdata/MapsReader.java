@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -29,7 +30,7 @@ public class MapsReader {
 	private static short minh = 0;
 	private static short maxh = 9000;
 	private static int zoom = 9;
-	private final static double degreePerBaseTile = 360 / 512;
+	private final static double degreePerBaseTile = 360.0 / 512.0;
 	
 	private static int colorGradient(double pred, double pgreen, double pblue) {
 		int r = (int) (SEA_BLUE.getRed() * pred + SNOW_WHITE.getRed() * (1 - pred));
@@ -71,6 +72,57 @@ public class MapsReader {
 		return new Tuple2<Integer, Integer>(xtile, ytile);
 	}
 	
+	private static double tile2lon(int x, int z) {
+		//return x / Math.pow(2.0, z) * 360.0 - 180;
+		int n = (int) Math.pow(2, z);
+		return (x / n * 360.0 - 180.0);
+	}
+
+	private static double tile2lat(int y, int z) {
+		//double n = Math.PI - (2.0 * Math.PI * y) / Math.pow(2.0, z);
+		//return Math.toDegrees(Math.atan(Math.sinh(n)));
+		int n = (int) Math.pow(2, z);
+		double lat_rad = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n)));
+		return (lat_rad * 180.0 / Math.PI);
+	}
+	
+	private static int[] getTileFromIntArray(int[] arr, int size, int demLatGap, int demLngGap, int latGap, int lngGap) {
+		int[] res = new int[size * size]; // default : all 0
+		/*System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLatGap : " + demLatGap);
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + demLngGap);
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> latGap : " + latGap);
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> lngGap : " + lngGap);*/
+		int limitj, limiti;
+		if (demLatGap == 0) {
+			limitj = (size - latGap);
+		}
+		else {
+			limitj = (size - demLatGap);
+		}
+		if (demLngGap == 0) {
+			limiti = (size - lngGap);
+		}
+		else {
+			limiti = (size - demLngGap);
+		}
+		for (int jarr = 0 ; jarr < limitj ; jarr++) {
+			for (int iarr = 0 ; iarr < limiti ; iarr++) {
+				int item = arr[(jarr + demLatGap) * dem3Size + iarr + demLngGap];
+				res[(latGap + jarr) * size + lngGap + iarr] = item;
+			}
+		}
+		return res;
+	}
+	
+	private static int[] aggregateIntArrays(int[] a, int[] b) {
+		int size = Math.max(a.length, b.length);
+		int[] res = new int[size];
+		for (int i = 0 ; i < size ; i++) {
+			res[i] = Math.max(a[i], b[i]);
+		}
+		return res;
+	}
+	
 	private static BufferedImage resize(BufferedImage img, int newW, int newH) {
 		Image tmp = img.getScaledInstance(newW, newH, Image.SCALE_SMOOTH);
 		BufferedImage dimg = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_RGB);
@@ -80,9 +132,9 @@ public class MapsReader {
 		return dimg;
 	}
 	
-	private static ImageIcon intToImg(int[] pxls){
-	    BufferedImage outputImage = new BufferedImage(dem3Size, dem3Size, BufferedImage.TYPE_INT_RGB);
-		outputImage.setRGB(0, 0, dem3Size, dem3Size, getIntArrayRGB(pxls), 0, dem3Size);
+	private static ImageIcon intToImg(int[] pxls, int size){
+	    BufferedImage outputImage = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+		outputImage.setRGB(0, 0, size, size, getIntArrayRGB(pxls), 0, size);
 		outputImage = resize(outputImage, tileSize, tileSize);
 		return new ImageIcon(outputImage);
 	}
@@ -110,7 +162,7 @@ public class MapsReader {
 	
 	private static void saveAllImages(JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9, String dirpath) {
 		rddzm9.foreach((Tuple2<Tuple2<Integer, Integer>, ImageIcon> t) -> {
-			String imgpath = dirpath + "/testtiles/" + ".png";
+			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1._2 + "/" + t._1._1 + ".png";
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> IMGPATH (zoom " + zoom + ") : " + imgpath);
 			BufferedImage img = toBufferedImage(t._2);
 			saveImg(img, imgpath);
@@ -141,39 +193,65 @@ public class MapsReader {
 			return res;
 		}).cache();
 		//
-		JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9 = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
+		JavaPairRDD<Tuple2<Integer, Integer>, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
 			// --- Coordinates ---
 			int lat, lng;
 			lat = t._1._1;
 			lng = t._1._2;
-			ArrayList<Tuple2<Tuple2<Integer, Integer>, ImageIcon>> list = new ArrayList<Tuple2<Tuple2<Integer, Integer>, ImageIcon>>();
+			int size = (int) (degreePerBaseTile * (double) dem3Size);
+			ArrayList<Tuple2<Tuple2<Integer, Integer>, int[]>> list = new ArrayList<Tuple2<Tuple2<Integer, Integer>, int[]>>();
 			for (int i = 0 ; i < 4 ; i++) {
 				Tuple2<Integer, Integer> key;
+				int latGap, lngGap;
+				int[] tilePart;
 				switch(i) {
 					case 1 :
 						key = getTileNumber(lat + 1, lng, zoom);
+						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
+						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
+						tilePart = getTileFromIntArray(t._2, size, (dem3Size - (size - latGap)), 0, 0, lngGap);
 						break;
 					case 2 :
 						key = getTileNumber(lat, lng + 1, zoom);
+						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
+						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
+						tilePart = getTileFromIntArray(t._2, size, 0, (dem3Size - (size - lngGap)), latGap, 0);
 						break;
 					case 3 :
 						key = getTileNumber(lat + 1, lng + 1, zoom);
+						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
+						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
+						tilePart = getTileFromIntArray(t._2, size, (dem3Size - (size - latGap)), (dem3Size - (size - lngGap)), 0, 0);
 						break;
-					default :
+					default : // 0
 						key = getTileNumber(lat, lng, zoom);
+						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
+						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
+						tilePart = getTileFromIntArray(t._2, size, 0, 0, latGap, lngGap);
 				}
-				ImageIcon img;
-				Tuple2<Tuple2<Integer, Integer>, ImageIcon> item = new Tuple2<Tuple2<Integer, Integer>, ImageIcon>(key, img);
+				Tuple2<Tuple2<Integer, Integer>, int[]> item = new Tuple2<Tuple2<Integer, Integer>, int[]>(key, tilePart);
+				list.add(item);
 			}
-	        // --- Get image ---
-			ImageIcon img = intToImg(t._2);
 			// --- Return ---
 			return list.iterator();
 		}).cache();
-		// --- Save as image ---
 		rddRaw.unpersist();
+		JavaPairRDD<Tuple2<Integer, Integer>, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey();
+		rddzm9Cut.unpersist();
+		JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<Tuple2<Integer, Integer>, Iterable<int[]>> t) -> {
+			int size = (int) (degreePerBaseTile * (double) dem3Size);
+			Iterator<int[]> it = t._2.iterator();
+			int[] tile = it.next();
+			while (it.hasNext()) {
+				tile = aggregateIntArrays(tile, it.next());
+			}
+			ImageIcon img = intToImg(tile, size);
+			return new Tuple2<Tuple2<Integer, Integer>, ImageIcon>(t._1, img);
+		});
+		rddzm9CutGrouped.unpersist();
+		// --- Save as image ---
 		saveAllImages(rddzm9, args[1]);
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDD1");
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		rddzm9.unpersist();
 		context.close();
 	}
