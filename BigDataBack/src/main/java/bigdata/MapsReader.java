@@ -66,9 +66,20 @@ public class MapsReader {
 	}
 	
 	private static Tuple2<Integer, Integer> getTileNumber(double lat, double lon, int zoom) {
-		int n = (int) Math.pow(2, zoom);
+		/*int n = (int) Math.pow(2, zoom);
 		int xtile = (int) (n * ((lon + 180) / 360));
 		int ytile = (int) (n * (1 - (Math.log(Math.tan(lat) + (1 / Math.cos(lat))) / Math.PI)) / 2);
+		return new Tuple2<Integer, Integer>(xtile, ytile);*/
+		int xtile = (int)Math.floor((lon + 180) / 360 * (1<<zoom)) ;
+		int ytile = (int)Math.floor((1 - Math.log(Math.tan(Math.toRadians(lat)) + 1 / Math.cos(Math.toRadians(lat))) / Math.PI) / 2 * (1<<zoom)) ;
+		if (xtile < 0)
+			xtile = 0;
+		if (xtile >= (1<<zoom))
+			xtile = ((1<<zoom)-1);
+		if (ytile < 0)
+			ytile = 0;
+		if (ytile >= (1<<zoom))
+			ytile = ((1<<zoom)-1);
 		return new Tuple2<Integer, Integer>(xtile, ytile);
 	}
 	
@@ -97,13 +108,13 @@ public class MapsReader {
 			limitj = (size - latGap);
 		}
 		else {
-			limitj = (size - demLatGap);
+			limitj = (dem3Size - demLatGap);
 		}
 		if (demLngGap == 0) {
 			limiti = (size - lngGap);
 		}
 		else {
-			limiti = (size - demLngGap);
+			limiti = (dem3Size - demLngGap);
 		}
 		for (int jarr = 0 ; jarr < limitj ; jarr++) {
 			for (int iarr = 0 ; iarr < limiti ; iarr++) {
@@ -177,56 +188,61 @@ public class MapsReader {
 		String rawpath = args[0];
 		JavaPairRDD<Text, IntArrayWritable> rddRaw = context.sequenceFile(rawpath, Text.class, IntArrayWritable.class);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddRaw : " + rddRaw.count());
-		JavaPairRDD<Tuple2<Integer, Integer>, int[]> rdd = rddRaw.mapToPair((Tuple2<Text, IntArrayWritable> t) -> {
+		JavaPairRDD<Tuple2<Double, Double>, int[]> rdd = rddRaw.mapToPair((Tuple2<Text, IntArrayWritable> t) -> {
 			String name = t._1.toString();
 			int[] newVal = t._2.getArray();
 			// --- Coordinates ---
 			String s = name.substring(name.length() - 11, name.length());
-			int lat, lng;
-			lat = Integer.parseInt(s.substring(1, 3));
-			lng = Integer.parseInt(s.substring(4, 7));
-			if (s.charAt(0) == 'S' || s.charAt(0) == 's') lat *= -1;
-			if (s.charAt(3) == 'W' || s.charAt(3) == 'w') lng *= -1;
+			double lat, lng;
+			lat = Double.parseDouble(s.substring(1, 3));
+			lng = Double.parseDouble(s.substring(4, 7));
+			if (s.charAt(0) == 'S' || s.charAt(0) == 's') lat *= -1.0;
+			if (s.charAt(3) == 'W' || s.charAt(3) == 'w') lng *= -1.0;
 			// --- Results ---
-			Tuple2<Integer, Integer> latlng = new Tuple2<Integer, Integer>(lat, lng);
-			Tuple2<Tuple2<Integer, Integer>, int[]> res = new Tuple2<Tuple2<Integer, Integer>, int[]>(latlng, newVal);
+			Tuple2<Double, Double> latlng = new Tuple2<Double, Double>(lat, lng);
+			Tuple2<Tuple2<Double, Double>, int[]> res = new Tuple2<Tuple2<Double, Double>, int[]>(latlng, newVal);
 			return res;
 		}).cache();
 		//
-		JavaPairRDD<Tuple2<Integer, Integer>, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
+		JavaPairRDD<Tuple2<Integer, Integer>, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Double, Double>, int[]> t) -> {
 			// --- Coordinates ---
-			int lat, lng;
+			double lat, lng;
 			lat = t._1._1;
 			lng = t._1._2;
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			ArrayList<Tuple2<Tuple2<Integer, Integer>, int[]>> list = new ArrayList<Tuple2<Tuple2<Integer, Integer>, int[]>>();
 			for (int i = 0 ; i < 4 ; i++) {
+				Tuple2<Integer, Integer> baseKey = getTileNumber(lat, lng, zoom);
 				Tuple2<Integer, Integer> key;
 				int latGap, lngGap;
 				int[] tilePart;
 				switch(i) {
 					case 1 :
-						key = getTileNumber(lat + 1, lng, zoom);
-						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
-						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
-						tilePart = getTileFromIntArray(t._2, size, (dem3Size - (size - latGap)), 0, 0, lngGap);
+						//key = getTileNumber(lat + degreePerBaseTile, lng, zoom);
+						key = new Tuple2<Integer, Integer>(baseKey._1 + 1, baseKey._2);
+						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
+						tilePart = getTileFromIntArray(t._2, size, (size - latGap), 0, 0, lngGap);
 						break;
 					case 2 :
-						key = getTileNumber(lat, lng + 1, zoom);
-						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
-						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
-						tilePart = getTileFromIntArray(t._2, size, 0, (dem3Size - (size - lngGap)), latGap, 0);
+						//key = getTileNumber(lat, lng + degreePerBaseTile, zoom);
+						key = new Tuple2<Integer, Integer>(baseKey._1, baseKey._2 + 1);
+						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
+						tilePart = getTileFromIntArray(t._2, size, 0, (size - lngGap), latGap, 0);
 						break;
 					case 3 :
-						key = getTileNumber(lat + 1, lng + 1, zoom);
-						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
-						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
-						tilePart = getTileFromIntArray(t._2, size, (dem3Size - (size - latGap)), (dem3Size - (size - lngGap)), 0, 0);
+						//key = getTileNumber(lat + degreePerBaseTile, lng + degreePerBaseTile, zoom);
+						key = new Tuple2<Integer, Integer>(baseKey._1 + 1, baseKey._2 + 1);
+						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
+						tilePart = getTileFromIntArray(t._2, size, (size - latGap), (size - lngGap), 0, 0);
 						break;
 					default : // 0
-						key = getTileNumber(lat, lng, zoom);
-						latGap = (int) (Math.abs((double) lat - tile2lat(key._1, zoom)));// * dem3Size);
-						lngGap = (int) (Math.abs((double) lng - tile2lon(key._2, zoom)));// * dem3Size);
+						//key = getTileNumber(lat, lng, zoom);
+						key = new Tuple2<Integer, Integer>(baseKey._1, baseKey._2);
+						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
 						tilePart = getTileFromIntArray(t._2, size, 0, 0, latGap, lngGap);
 				}
 				Tuple2<Tuple2<Integer, Integer>, int[]> item = new Tuple2<Tuple2<Integer, Integer>, int[]>(key, tilePart);
@@ -237,6 +253,13 @@ public class MapsReader {
 		}).cache();
 		rddRaw.unpersist();
 		JavaPairRDD<Tuple2<Integer, Integer>, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey();
+		int gbk = 0;
+		Iterator<int[]> itgbk = rddzm9CutGrouped.first()._2.iterator();
+		while (itgbk.hasNext()) {
+			gbk++;
+			itgbk.next();
+		}
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GBK : " + gbk);
 		rddzm9Cut.unpersist();
 		JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<Tuple2<Integer, Integer>, Iterable<int[]>> t) -> {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
