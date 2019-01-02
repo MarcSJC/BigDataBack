@@ -173,7 +173,7 @@ public class MapsReader {
 	
 	private static void saveAllImages(JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9, String dirpath) {
 		rddzm9.foreach((Tuple2<Tuple2<Integer, Integer>, ImageIcon> t) -> {
-			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1._2 + "/" + t._1._1 + ".png";
+			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1._1 + "/" + t._1._2 + ".png";
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> IMGPATH (zoom " + zoom + ") : " + imgpath);
 			BufferedImage img = toBufferedImage(t._2);
 			saveImg(img, imgpath);
@@ -214,35 +214,42 @@ public class MapsReader {
 			for (int i = 0 ; i < 4 ; i++) {
 				Tuple2<Integer, Integer> baseKey = getTileNumber(lat, lng, zoom);
 				Tuple2<Integer, Integer> key;
-				int latGap, lngGap;
+				int latGap, lngGap, latStep, lngStep;
 				int[] tilePart;
+				latStep = 1;
+				lngStep = 1;
+				/*if (lat < 0) latStep = -1;
+				if (lng >= 0) lngStep = -1;*/
+				latGap = (int) (Math.abs(lat - tile2lat(baseKey._1, zoom)));
+				lngGap = (int) (Math.abs(lng - tile2lon(baseKey._2, zoom)));
 				switch(i) {
 					case 1 :
-						//key = getTileNumber(lat + degreePerBaseTile, lng, zoom);
-						key = new Tuple2<Integer, Integer>(baseKey._1 + 1, baseKey._2);
-						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
-						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
+						//key = getTileNumber(lat + latStep, lng, zoom);
+						key = new Tuple2<Integer, Integer>(baseKey._1 + latStep, baseKey._2);
+						/*latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));*/
 						tilePart = getTileFromIntArray(t._2, size, (size - latGap), 0, 0, lngGap);
 						break;
 					case 2 :
-						//key = getTileNumber(lat, lng + degreePerBaseTile, zoom);
-						key = new Tuple2<Integer, Integer>(baseKey._1, baseKey._2 + 1);
-						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
-						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
+						//key = getTileNumber(lat, lng + lngStep, zoom);
+						key = new Tuple2<Integer, Integer>(baseKey._1, baseKey._2 + lngStep);
+						/*latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));*/
 						tilePart = getTileFromIntArray(t._2, size, 0, (size - lngGap), latGap, 0);
 						break;
 					case 3 :
-						//key = getTileNumber(lat + degreePerBaseTile, lng + degreePerBaseTile, zoom);
-						key = new Tuple2<Integer, Integer>(baseKey._1 + 1, baseKey._2 + 1);
-						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
-						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
+						//key = getTileNumber(lat + latStep, lng + lngStep, zoom);
+						key = new Tuple2<Integer, Integer>(baseKey._1 + latStep, baseKey._2 + lngStep);
+						/*latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));*/
 						tilePart = getTileFromIntArray(t._2, size, (size - latGap), (size - lngGap), 0, 0);
 						break;
 					default : // 0
 						//key = getTileNumber(lat, lng, zoom);
-						key = new Tuple2<Integer, Integer>(baseKey._1, baseKey._2);
-						latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
-						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));
+						//key = new Tuple2<Integer, Integer>(baseKey._1, baseKey._2);
+						key = baseKey;
+						/*latGap = (int) (Math.abs(lat - tile2lat(key._1, zoom)));
+						lngGap = (int) (Math.abs(lng - tile2lon(key._2, zoom)));*/
 						tilePart = getTileFromIntArray(t._2, size, 0, 0, latGap, lngGap);
 				}
 				Tuple2<Tuple2<Integer, Integer>, int[]> item = new Tuple2<Tuple2<Integer, Integer>, int[]>(key, tilePart);
@@ -253,13 +260,13 @@ public class MapsReader {
 		}).cache();
 		rddRaw.unpersist();
 		JavaPairRDD<Tuple2<Integer, Integer>, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey();
-		int gbk = 0;
+		/*int gbk = 0;
 		Iterator<int[]> itgbk = rddzm9CutGrouped.first()._2.iterator();
 		while (itgbk.hasNext()) {
 			gbk++;
 			itgbk.next();
 		}
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GBK : " + gbk);
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GBK : " + gbk);*/
 		rddzm9Cut.unpersist();
 		JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<Tuple2<Integer, Integer>, Iterable<int[]>> t) -> {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
