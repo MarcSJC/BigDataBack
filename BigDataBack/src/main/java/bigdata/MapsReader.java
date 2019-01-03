@@ -32,6 +32,8 @@ public class MapsReader {
 	private static int zoom = 9;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
 	
+	private static int idimg = 0;
+	
 	private static int colorGradient(double pred, double pgreen, double pblue) {
 		int r = (int) (SEA_BLUE.getRed() * pred + SNOW_WHITE.getRed() * (1 - pred));
 		int g = (int) (SEA_BLUE.getGreen() * pgreen + SNOW_WHITE.getGreen() * (1 - pgreen));
@@ -240,10 +242,7 @@ public class MapsReader {
 			int latGap, lngGap, latStep, lngStep;
 			latGap = (int) (Math.abs(lat - tile2lat(baseKey._1, zoom)));
 			lngGap = (int) (Math.abs(lng - tile2lon(baseKey._2, zoom)));
-			/*if (lat < 0) latStep = -1;
-			else latStep = 1;
-			if (lng < 0) lngStep = -1;
-			else lngStep = 1;*/
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
 			latStep = 1;
 			lngStep = 1;
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
@@ -288,6 +287,7 @@ public class MapsReader {
 						key = baseKey._2 + "/" + baseKey._1;
 						tilePart = getTileFromIntArray(t._2, size, 0, 0, latGap, lngGap);
 				}
+				key += idimg++;
 				Tuple2<String, int[]> item = new Tuple2<String, int[]>(key, tilePart);
 				//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> IMG : (" + lat + ", " + lng + ") : " + key._2 + ", " + key._1);
 				list.add(item);
@@ -297,26 +297,19 @@ public class MapsReader {
 		}).cache();
 		rddRaw.unpersist();
 		
-		/*JavaPairRDD<Tuple2<Integer, Integer>, ImageIcon> rddTest = rddzm9Cut.mapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
+		JavaPairRDD<String, ImageIcon> rddTest = rddzm9Cut.mapToPair((Tuple2<String, int[]> t) -> {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			ImageIcon img = intToImg(t._2, size);
-			return new Tuple2<Tuple2<Integer, Integer>, ImageIcon>(t._1, img);
+			return new Tuple2<String, ImageIcon>(t._1, img);
 		});
-		saveAllImages(rddTest, args[1] + "/arcachon");*/
+		saveAllImages(rddTest, args[1] + "/Cut");
 		
 		//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddzm9Cut : " + rddzm9Cut.count());
 		
 		JavaPairRDD<String, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey();
-			
-		/*int gbk = 0;
-		Iterator<int[]> itgbk = rddzm9CutGrouped.first()._2.iterator();
-		while (itgbk.hasNext()) {
-			gbk++;
-			itgbk.next();
-		}
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GBK : " + gbk);*/
+	
 		rddzm9Cut.unpersist();
-		JavaPairRDD<String, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<String, Iterable<int[]>> t) -> {
+		/*JavaPairRDD<String, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<String, Iterable<int[]>> t) -> {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			Iterator<int[]> it = t._2.iterator();
 			int[] tile = it.next();
@@ -329,12 +322,12 @@ public class MapsReader {
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> TILE : " + t._1 + "(" + l + ")");
 			return new Tuple2<String, ImageIcon>(t._1, img);
 		});
-		rddzm9CutGrouped.unpersist();
+		rddzm9CutGrouped.unpersist();*/
 		// --- Save as image ---
-		saveAllImages(rddzm9, args[1]);
+		//saveAllImages(rddzm9, args[1]);
 		//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddzm9 : " + rddzm9.count());
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
-		rddzm9.unpersist();
+		//rddzm9.unpersist();
 		context.close();
 	}
 
