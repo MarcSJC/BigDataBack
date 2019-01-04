@@ -72,9 +72,9 @@ public class MapsReader {
 		/*int n = (int) Math.pow(2, zoom);
 		int xtile = (int) (n * ((lon + 180) / 360));
 		int ytile = (int) (n * (1 - (Math.log(Math.tan(lat) + (1 / Math.cos(lat))) / Math.PI)) / 2);
-		return new Tuple2<Integer, Integer>(xtile, ytile);*/
-		int xtile = (int)Math.floor((lon + 180) / 360 * (1<<zoom));
-		int ytile = (int)Math.floor((1 - Math.log(Math.tan(Math.toRadians(lat)) + 1 / Math.cos(Math.toRadians(lat))) / Math.PI) / 2 * (1<<zoom));
+		return new Tuple2<Integer, Integer>(ytile, xtile);*/
+		int xtile = (int) Math.floor((lon + 180) / 360 * (1<<zoom));
+		int ytile = (int) Math.floor((1 - Math.log(Math.tan(Math.toRadians(lat)) + 1 / Math.cos(Math.toRadians(lat))) / Math.PI) / 2 * (1<<zoom));
 		if (xtile < 0)
 			xtile = 0;
 		if (xtile >= (1<<zoom))
@@ -109,9 +109,9 @@ public class MapsReader {
 	
 	/*private static int getYPixels(int lat, int y) {
 		double size = (degreePerBaseTile * (double) dem3Size);
-		int pxLat = (90 + lat) * dem3Size;
+		int pxLat = (int) ((2 * Math.toDegrees(Math.atan(Math.sinh(Math.PI))) - lat) * dem3Size);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pxLat : " + pxLat + " (" + lat + " -> " + (90 - lat) + ")");
-		int pxY = (int) ((double) (y + 1) * size);
+		int pxY = (int) (((double) y) * size);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pxY : " + pxY + " (" + y + ")");
 		return Math.abs(Math.abs(pxLat) - Math.abs(pxY));
 	}
@@ -119,7 +119,7 @@ public class MapsReader {
 	private static int getXPixels(int lng, int x) {
 		int size = (int) (degreePerBaseTile * (double) dem3Size);
 		int pxLng = (180 + lng) * dem3Size;
-		int pxX = (x + 1) * size;
+		int pxX = (int) (((double) x) * size);
 		return Math.abs(Math.abs(pxLng) - Math.abs(pxX));
 	}*/
 	
@@ -129,7 +129,7 @@ public class MapsReader {
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + demLngGap);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> latGap : " + latGap);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> lngGap : " + lngGap);*/
-		/*int limitj, limiti;
+		int limitj, limiti;
 		if (demLatGap == 0) {
 			limitj = (size - latGap);
 		}
@@ -141,12 +141,12 @@ public class MapsReader {
 		}
 		else {
 			limiti = (dem3Size - demLngGap);
-		}*/
-		for (int jarr = 0 ; jarr < dem3Size ; jarr++) {
+		}
+		for (int jarr = 0 ; jarr < limitj ; jarr++) {
 			int jd = latGap + jarr;
 			int py = jarr + demLatGap;
 			//if (jd < size && py < dem3Size) {
-				for (int iarr = 0 ; iarr < dem3Size ; iarr++) {
+				for (int iarr = 0 ; iarr < limiti ; iarr++) {
 					int id = lngGap + iarr;
 					int px = iarr + demLngGap;
 					//if (id < size && px < dem3Size) {
