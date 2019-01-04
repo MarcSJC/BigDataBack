@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import javax.imageio.ImageIO;
@@ -93,14 +94,17 @@ public class MapsReader {
 	}
 
 	private static double tile2lat(int y, int z) {
-		double n = Math.PI - (2.0 * Math.PI * y) / Math.pow(2.0, z);
-		return Math.toDegrees(Math.atan(Math.sinh(n)));
+		double n = Math.PI - (2.0 * Math.PI * ((double) y)) / Math.pow(2.0, z);
+		double res = Math.toDegrees(Math.atan(Math.sinh(n)));
+		return res;
 		/*int n = (int) Math.pow(2, z);
 		double lat_rad = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / n)));
 		return Math.toDegrees(lat_rad);*/
 		/*double t = 2 * (1<<z);
 		double k = Math.exp((t * y - 1) * Math.PI);
 		return Math.acos((2 * k) / (Math.pow(k, 2) + 1));*/
+		//return res - ((1 / Math.tan(Math.sinh(y))));
+		//return y / Math.pow(2.0, z) * 360.0 - Math.toDegrees(Math.atan(Math.sinh(Math.PI)));
 	}
 	
 	/*private static int getYPixels(int lat, int y) {
@@ -125,7 +129,7 @@ public class MapsReader {
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + demLngGap);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> latGap : " + latGap);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> lngGap : " + lngGap);*/
-		int limitj, limiti;
+		/*int limitj, limiti;
 		if (demLatGap == 0) {
 			limitj = (size - latGap);
 		}
@@ -137,12 +141,21 @@ public class MapsReader {
 		}
 		else {
 			limiti = (dem3Size - demLngGap);
-		}
-		for (int jarr = 0 ; jarr < limitj ; jarr++) {
-			for (int iarr = 0 ; iarr < limiti ; iarr++) {
-				int item = arr[(jarr + demLatGap) * dem3Size + iarr + demLngGap];
-				res[(latGap + jarr) * size + lngGap + iarr] = item;
-			}
+		}*/
+		for (int jarr = 0 ; jarr < dem3Size ; jarr++) {
+			int jd = latGap + jarr;
+			int py = jarr + demLatGap;
+			//if (jd < size && py < dem3Size) {
+				for (int iarr = 0 ; iarr < dem3Size ; iarr++) {
+					int id = lngGap + iarr;
+					int px = iarr + demLngGap;
+					//if (id < size && px < dem3Size) {
+					try {
+						res[jd * size + id] = arr[py * dem3Size + px];
+					} catch(Exception e) {}
+					//}
+				}
+			//}
 		}
 		return res;
 	}
@@ -232,17 +245,18 @@ public class MapsReader {
 			lat = t._1._1;
 			lng = t._1._2;
 			Tuple2<Integer, Integer> baseKey = getTileNumber(lat, lng, zoom);
-			Tuple2<Integer, Integer> endKey = getTileNumber(lat + 1, lng + 1, zoom);
+			Tuple2<Integer, Integer> endKey = getTileNumber(lat - 1, lng + 1, zoom);
 			double tileLat = tile2lat(baseKey._1, zoom);
 			double tileLng = tile2lon(baseKey._2, zoom);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> TILE (Lat, Lng) : " + tileLat + ", " + tileLng + " (" + lat + ", " + lng + ")");
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> TILE (Lat, Lng) : " + tileLat + ", " + tileLng + " (" + lat + ", " + lng + ")"+ " to (" + (lat - 1) + ", " + (lng + 1) + ") ->" + "(" + baseKey._1 + ", " + baseKey._2 + ") to (" + endKey._1 + ", " + endKey._2 + ")");
 			int nbTilesLng;
 			int nbTilesLat;
-			if (endKey._1 - baseKey._1 > 1) nbTilesLat = 3; 
+			if (Math.abs(baseKey._1 - endKey._1) > 1) nbTilesLat = 3; 
 			else nbTilesLat = 2;
-			if (endKey._2 - baseKey._2 > 1) nbTilesLng = 3; 
+			if (Math.abs(endKey._2 - baseKey._2) > 1) nbTilesLng = 3; 
 			else nbTilesLng = 2;
 			int[] cases = new int[nbTilesLat * nbTilesLng];
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> nbTilesLat, nbTilesLng : " + nbTilesLat + ", " + nbTilesLng);
 			cases[0] = 0;
 			cases[1] = 1;
 			cases[2] = 2;
@@ -262,48 +276,49 @@ public class MapsReader {
 				cases[4] = 5;
 				cases[5] = 7;
 			}
-			int latStep, lngStep, latGap, lngGap;
-			latGap = (int) (Math.abs(lat - tileLat) * dem3Size);
-			lngGap = (int) (Math.abs(lng - tileLng) * dem3Size);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
-			latStep = 1;
-			lngStep = 1;
+			int latGap, lngGap;
+			latGap = (int) (Math.abs(((double) lat) - tileLat) * (double) dem3Size);
+			lngGap = (int) (Math.abs(((double) lng) - tileLng) * (double) dem3Size);
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> cases : " + Arrays.toString(cases));
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLatGap : " + (size - latGap) + " ou " + ( 2 * size - latGap));
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + (size - lngGap) + " ou " + ( 2 * size - lngGap));
 			ArrayList<Tuple2<String, int[]>> list = new ArrayList<Tuple2<String, int[]>>();
 			for (int i : cases) {
 				String key;
 				int[] tilePart;
 				switch(i) {
 					case 1 :
-						key = (baseKey._2 + lngStep) + "/" + baseKey._1;
+						key = (baseKey._2 + 1) + "/" + baseKey._1;
 						tilePart = getTileFromIntArray(t._2, size, 0, (size - lngGap), latGap, 0);
 						break;
 					case 2 :
-						key = baseKey._2 + "/" + (baseKey._1 + latStep);
+						key = baseKey._2 + "/" + (baseKey._1 + 1);
 						tilePart = getTileFromIntArray(t._2, size, (size - latGap), 0, 0, lngGap);
 						break;
 					case 3 :
-						key = (baseKey._2 + lngStep) + "/" + (baseKey._1 + latStep);
+						key = (baseKey._2 + 1) + "/" + (baseKey._1 + 1);
 						tilePart = getTileFromIntArray(t._2, size, (size - latGap), (size - lngGap), 0, 0);
 						break;
 					case 4 :
-						key = baseKey._2 + "/" + (baseKey._1 + 2 * latStep);
+						key = baseKey._2 + "/" + (baseKey._1 + 2);
 						tilePart = getTileFromIntArray(t._2, size, (2 * size - latGap), 0, 0, lngGap);
 						break;
 					case 5 :
-						key = (baseKey._2 + 2 * lngStep) + "/" + baseKey._1;
+						key = (baseKey._2 + 2) + "/" + baseKey._1;
 						tilePart = getTileFromIntArray(t._2, size, 0, (2 * size - lngGap), latGap, 0);
 						break;
 					case 6 :
-						key = (baseKey._2 + lngStep) + "/" + (baseKey._1 + 2 * latStep);
+						key = (baseKey._2 + 1) + "/" + (baseKey._1 + 2);
 						tilePart = getTileFromIntArray(t._2, size, (2 * size - latGap), (size - lngGap), 0, 0);
 						break;
 					case 7 :
-						key = (baseKey._2 + 2 * lngStep) + "/" + (baseKey._1 + latStep);
+						key = (baseKey._2 + 2) + "/" + (baseKey._1 + 1);
 						tilePart = getTileFromIntArray(t._2, size, (size - latGap), (2 * size - lngGap), 0, 0);
 						break;
 					case 8 :
-						key = (baseKey._2 + 2 * lngStep) + "/" + (baseKey._1 + 2 * latStep);
+						key = (baseKey._2 + 2) + "/" + (baseKey._1 + 2);
 						tilePart = getTileFromIntArray(t._2, size, (2 * size - latGap), (2 * size - lngGap), 0, 0);
 						break;
 					default : // 0
@@ -314,6 +329,7 @@ public class MapsReader {
 				Tuple2<String, int[]> item = new Tuple2<String, int[]>(key, tilePart);
 				//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> IMG : (" + lat + ", " + lng + ") : " + key._2 + ", " + key._1);
 				list.add(item);
+				System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> case : " + i + " (" + key + ")");
 			}
 			// --- Return ---
 			return list.iterator();
@@ -346,10 +362,10 @@ public class MapsReader {
 			return new Tuple2<String, ImageIcon>(t._1, img);
 		});
 		rddzm9CutGrouped.unpersist();
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		// --- Save as image ---
 		saveAllImages(rddzm9, args[1]);
 		//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddzm9 : " + rddzm9.count());
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		rddzm9.unpersist();
 		context.close();
 	}
