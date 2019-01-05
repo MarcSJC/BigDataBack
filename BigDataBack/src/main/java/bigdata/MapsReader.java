@@ -86,6 +86,11 @@ public class MapsReader {
 		return new Tuple2<Integer, Integer>(ytile, xtile);
 	}
 	
+	private static int getTileYPixels(int y, int zoom) {
+		int ytile = (1 - Math.log(Math.tan(Math.toRadians(lat)) + 1 / Math.cos(Math.toRadians(lat))) / Math.PI) / 2 * (1<<zoom);
+
+	}
+	
 	private static double tile2lon(int x, int z) {
 		return x / Math.pow(2.0, z) * 360.0 - 180;
 		//int n = (int) Math.pow(2, z);
@@ -123,6 +128,25 @@ public class MapsReader {
 		return Math.abs(Math.abs(pxLng) - Math.abs(pxX));
 	}*/
 	
+	/* Lat : 180 * 1201 - 256 * size
+	 */
+	
+	private static int getYPixels(int lat, int y) {
+		double size = (degreePerBaseTile * (double) dem3Size);
+		int pxLat = 180 * dem3Size;
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pxLat : " + pxLat + " (" + lat + " -> " + (90 - lat) + ")");
+		int pxY = (int) (((double) y) * tileSize);
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pxY : " + pxY + " (" + y + ")");
+		return Math.abs(Math.abs(pxLat) - Math.abs(pxY));
+	}
+	
+	private static int getXPixels(int lng, int x) {
+		int size = (int) (degreePerBaseTile * (double) dem3Size);
+		int pxLng = (180 + lng) * dem3Size;
+		int pxX = (int) (((double) x) * size);
+		return Math.abs(Math.abs(pxLng) - Math.abs(pxX));
+	}
+	
 	private static int[] getTileFromIntArray(int[] arr, int size, int demLatGap, int demLngGap, int latGap, int lngGap) {
 		int[] res = new int[size * size]; // default : all 0
 		/*System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLatGap : " + demLatGap);
@@ -130,33 +154,47 @@ public class MapsReader {
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> latGap : " + latGap);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> lngGap : " + lngGap);*/
 		int limitj, limiti;
-		if (demLatGap == 0) {
-			limitj = (size - latGap);
+		/*if (latGap != 0) {
+			limitj = Math.abs(size - latGap);
 		}
 		else {
-			limitj = (dem3Size - demLatGap);
+			limitj = Math.abs(dem3Size - demLatGap);
 		}
-		if (demLngGap == 0) {
-			limiti = (size - lngGap);
+		if (lngGap != 0) {
+			limiti = Math.abs(size - lngGap);
 		}
 		else {
-			limiti = (dem3Size - demLngGap);
-		}
+			limiti = Math.abs(dem3Size - demLngGap);
+		}*/
+		limitj = Math.abs(size - latGap);//Math.abs(size - dem3Size - latGap);//Math.abs(size - latGap);
+		limiti = Math.abs(size - lngGap);//Math.abs(size - dem3Size - lngGap);//Math.abs(size - lngGap);
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> limitj, limiti : " + limitj + ", " + limiti);
+		/*if (demLatGap != 0) {
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> limitj, limiti : " + limitj + ", " + limiti);
+		}*/
+		int jd = 0, id = 0, py = 0, px = 0;
 		for (int jarr = 0 ; jarr < limitj ; jarr++) {
-			int jd = latGap + jarr;
-			int py = jarr + demLatGap;
+			jd = jarr + latGap;
+			py = jarr + demLatGap;
 			//if (jd < size && py < dem3Size) {
 				for (int iarr = 0 ; iarr < limiti ; iarr++) {
-					int id = lngGap + iarr;
-					int px = iarr + demLngGap;
+					id = iarr + lngGap;
+					px = iarr + demLngGap;
+					if ((py * dem3Size + px) > arr.length - 1 || (jd * size + id) > res.length - 1) {
+						break;
+					}
 					//if (id < size && px < dem3Size) {
-					try {
+					//try {
 						res[jd * size + id] = arr[py * dem3Size + px];
-					} catch(Exception e) {}
+					//} catch(Exception e) {}
 					//}
 				}
 			//}
 		}
+		/*if (demLatGap != 0) {
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> jd, id : " + jd + ", " + id);
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> py, px : " + py + ", " + px);
+		}*/
 		return res;
 	}
 	
@@ -223,25 +261,27 @@ public class MapsReader {
 		String rawpath = args[0];
 		JavaPairRDD<Text, IntArrayWritable> rddRaw = context.sequenceFile(rawpath, Text.class, IntArrayWritable.class);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddRaw : " + rddRaw.count());
-		JavaPairRDD<Tuple2<Integer, Integer>, int[]> rdd = rddRaw.mapToPair((Tuple2<Text, IntArrayWritable> t) -> {
+		JavaPairRDD<Tuple2<Double, Double>, int[]> rdd = rddRaw.mapToPair((Tuple2<Text, IntArrayWritable> t) -> {
 			String name = t._1.toString();
 			int[] newVal = t._2.getArray();
 			// --- Coordinates ---
 			String s = name.substring(name.length() - 11, name.length());
-			int lat, lng;
-			lat = Integer.parseInt(s.substring(1, 3));
-			lng = Integer.parseInt(s.substring(4, 7));
+			double lat, lng;
+			lat = Double.parseDouble(s.substring(1, 3));
+			lng = Double.parseDouble(s.substring(4, 7));
+			/*double latRatio = Math.toDegrees(Math.atan(Math.sinh(Math.PI))) / 90.0;
+			lat *= latRatio;*/
 			if (s.charAt(0) == 'S' || s.charAt(0) == 's') lat *= -1.0;
 			if (s.charAt(3) == 'W' || s.charAt(3) == 'w') lng *= -1.0;
 			// --- Results ---
-			Tuple2<Integer, Integer> latlng = new Tuple2<Integer, Integer>(lat, lng);
-			Tuple2<Tuple2<Integer, Integer>, int[]> res = new Tuple2<Tuple2<Integer, Integer>, int[]>(latlng, newVal);
+			Tuple2<Double, Double> latlng = new Tuple2<Double, Double>(lat, lng);
+			Tuple2<Tuple2<Double, Double>, int[]> res = new Tuple2<Tuple2<Double, Double>, int[]>(latlng, newVal);
 			return res;
 		}).cache();
 		//
-		JavaPairRDD<String, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
+		JavaPairRDD<String, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Double, Double>, int[]> t) -> {
 			// --- Coordinates ---
-			int lat, lng;
+			double lat, lng;
 			lat = t._1._1;
 			lng = t._1._2;
 			Tuple2<Integer, Integer> baseKey = getTileNumber(lat, lng, zoom);
@@ -277,7 +317,7 @@ public class MapsReader {
 				cases[5] = 7;
 			}
 			int latGap, lngGap;
-			latGap = (int) (Math.abs(((double) lat) - tileLat) * (double) dem3Size);
+			latGap = 500;//(int) (Math.abs(((double) lat) - tileLat) * (double) dem3Size);
 			lngGap = (int) (Math.abs(((double) lng) - tileLng) * (double) dem3Size);
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
@@ -291,35 +331,35 @@ public class MapsReader {
 				switch(i) {
 					case 1 :
 						key = (baseKey._2 + 1) + "/" + baseKey._1;
-						tilePart = getTileFromIntArray(t._2, size, 0, (size - lngGap), latGap, 0);
+						tilePart = getTileFromIntArray(t._2, size, 0, Math.abs(size - lngGap), latGap, 0);
 						break;
 					case 2 :
 						key = baseKey._2 + "/" + (baseKey._1 + 1);
-						tilePart = getTileFromIntArray(t._2, size, (size - latGap), 0, 0, lngGap);
+						tilePart = getTileFromIntArray(t._2, size, Math.abs(size - latGap), 0, 0, lngGap);
 						break;
 					case 3 :
 						key = (baseKey._2 + 1) + "/" + (baseKey._1 + 1);
-						tilePart = getTileFromIntArray(t._2, size, (size - latGap), (size - lngGap), 0, 0);
+						tilePart = getTileFromIntArray(t._2, size, Math.abs(size - latGap), Math.abs(size - lngGap), 0, 0);
 						break;
 					case 4 :
 						key = baseKey._2 + "/" + (baseKey._1 + 2);
-						tilePart = getTileFromIntArray(t._2, size, (2 * size - latGap), 0, 0, lngGap);
+						tilePart = getTileFromIntArray(t._2, size, Math.abs(2 * size - latGap), 0, 0, lngGap);
 						break;
 					case 5 :
 						key = (baseKey._2 + 2) + "/" + baseKey._1;
-						tilePart = getTileFromIntArray(t._2, size, 0, (2 * size - lngGap), latGap, 0);
+						tilePart = getTileFromIntArray(t._2, size, 0, Math.abs(2 * size - lngGap), latGap, 0);
 						break;
 					case 6 :
 						key = (baseKey._2 + 1) + "/" + (baseKey._1 + 2);
-						tilePart = getTileFromIntArray(t._2, size, (2 * size - latGap), (size - lngGap), 0, 0);
+						tilePart = getTileFromIntArray(t._2, size, Math.abs(2 * size - latGap), Math.abs(size - lngGap), 0, 0);
 						break;
 					case 7 :
 						key = (baseKey._2 + 2) + "/" + (baseKey._1 + 1);
-						tilePart = getTileFromIntArray(t._2, size, (size - latGap), (2 * size - lngGap), 0, 0);
+						tilePart = getTileFromIntArray(t._2, size, Math.abs(size - latGap), Math.abs(2 * size - lngGap), 0, 0);
 						break;
 					case 8 :
 						key = (baseKey._2 + 2) + "/" + (baseKey._1 + 2);
-						tilePart = getTileFromIntArray(t._2, size, (2 * size - latGap), (2 * size - lngGap), 0, 0);
+						tilePart = getTileFromIntArray(t._2, size, Math.abs(2 * size - latGap), Math.abs(2 * size - lngGap), 0, 0);
 						break;
 					default : // 0
 						key = baseKey._2 + "/" + baseKey._1;
