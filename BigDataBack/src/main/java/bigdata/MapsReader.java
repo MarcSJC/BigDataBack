@@ -44,7 +44,7 @@ public class MapsReader {
 	private static short maxh = 9000;
 	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
-	static TableName TABLENAME = TableName.valueOf("TestTiles");
+	static TableName TABLENAME = TableName.valueOf("PascalTestTiles");
 	//static TableName POSNAME = TableName.valueOf("Position");
 	//static TableName FILENAME = TableName.valueOf("File");
 		
@@ -278,7 +278,7 @@ public class MapsReader {
 			if (Math.abs(endKey._2 - baseKey._2) > 1) nbTilesLng = 3; 
 			else nbTilesLng = 2;
 			int[] cases = new int[nbTilesLat * nbTilesLng];
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> nbTilesLat, nbTilesLng : " + nbTilesLat + ", " + nbTilesLng);
+			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> nbTilesLat, nbTilesLng : " + nbTilesLat + ", " + nbTilesLng);
 			cases[0] = 0;
 			cases[1] = 1;
 			cases[2] = 2;
@@ -302,11 +302,11 @@ public class MapsReader {
 			latGap = getYPixels(lat, baseKey._1);
 			lngGap = getXPixels(lng, baseKey._2);
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Coord : " + lat + ", " + lng);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> (" + nbTilesLat + ", " + nbTilesLng + ") cases : " + Arrays.toString(cases));
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLatGap : " + Math.abs(size - latGap) + " ou " + Math.abs( 2 * size - latGap));
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + Math.abs(size - lngGap) + " ou " + Math.abs( 2 * size - lngGap));
+			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Coord : " + lat + ", " + lng);
+			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
+			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> (" + nbTilesLat + ", " + nbTilesLng + ") cases : " + Arrays.toString(cases));
+			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLatGap : " + Math.abs(size - latGap) + " ou " + Math.abs( 2 * size - latGap));
+			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + Math.abs(size - lngGap) + " ou " + Math.abs( 2 * size - lngGap));
 			ArrayList<Tuple2<String, int[]>> list = new ArrayList<Tuple2<String, int[]>>();
 			for (int i : cases) {
 				String key;
@@ -351,7 +351,7 @@ public class MapsReader {
 				//key += idimg++;
 				Tuple2<String, int[]> item = new Tuple2<String, int[]>(key, tilePart);
 				list.add(item);
-				System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> case : " + i + " (" + key + ")");
+				//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> case : " + i + " (" + key + ")");
 			}
 			// --- Return ---
 			return list.iterator();
@@ -371,7 +371,7 @@ public class MapsReader {
 				tile = aggregateIntArrays(tile, it.next());
 			}
 			ImageIcon img = intToImg(tile, size);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> TILE : " + t._1 + "(" + l + ")");
+			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> TILE : " + t._1 + "(" + l + ")");
 			return new Tuple2<String, ImageIcon>(t._1, img);
 		});
 		rddzm9CutGrouped.unpersist();
