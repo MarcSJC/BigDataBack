@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,6 +16,17 @@ import java.util.Iterator;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Text;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
@@ -32,9 +44,10 @@ public class MapsReader {
 	private static short maxh = 9000;
 	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
-	
-	//private static int idimg = 0;
-	
+	static TableName TABLENAME = TableName.valueOf("TestTiles");
+	//static TableName POSNAME = TableName.valueOf("Position");
+	//static TableName FILENAME = TableName.valueOf("File");
+		
 	private static int colorGradient(double pred, double pgreen, double pblue) {
 		int r = (int) (SEA_BLUE.getRed() * pred + SNOW_WHITE.getRed() * (1 - pred));
 		int g = (int) (SEA_BLUE.getGreen() * pgreen + SNOW_WHITE.getGreen() * (1 - pgreen));
@@ -80,8 +93,6 @@ public class MapsReader {
 	
 	private static Tuple2<Integer, Integer> getTileNumber(int lat, int lng) {
 		int size = (int) (degreePerBaseTile * ((double) dem3Size));
-		//int latPxTotal = 180 * dem3Size;
-		//int lngPxTotal = 360 * dem3Size;
 		int latPx = getLatPixels(lat);
 		int lngPx = getLngPixels(lng);
 		int y = (int) Math.floor(latPx / size);
@@ -121,8 +132,6 @@ public class MapsReader {
 		else {
 			limiti = dem3Size - demLngGap;
 		}
-		/*limitj = Math.abs(size - latGap);
-		limiti = Math.abs(size - lngGap);*/
 		int jd = 0, id = 0, py = 0, px = 0;
 		for (int jarr = 0 ; jarr < limitj ; jarr++) {
 			jd = jarr + latGap;
@@ -185,11 +194,46 @@ public class MapsReader {
 		}
 	}
 	
-	private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
+	/*private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
 		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
 			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1 + ".png";
 			BufferedImage img = toBufferedImage(t._2);
 			saveImg(img, imgpath);
+		});
+	}*/
+	
+	private static void insertTile(Table table, String pos, BufferedImage img) throws IOException {
+		// instantiate Put class
+		Put p = new Put(Bytes.toBytes(pos)); 
+		// add values using add() method
+		p.addColumn(Bytes.toBytes("Position"),
+				Bytes.toBytes("Path"), Bytes.toBytes(pos));
+		ByteArrayOutputStream baos = new ByteArrayOutputStream();
+		ImageIO.write(img, "png", baos);
+		p.addColumn(Bytes.toBytes("File"),
+				Bytes.toBytes("Tile"), baos.toByteArray());
+		baos.close();;
+		// save the put Instance to the HTable.
+		table.put(p);
+	}
+	
+	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) throws IOException {
+		// instantiate Configuration class
+		Configuration config = HBaseConfiguration.create();	
+		// instantiate HTable class
+		HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
+		Connection connection = ConnectionFactory.createConnection(config);
+		Admin admin = connection.getAdmin();
+		HColumnDescriptor position = new HColumnDescriptor("Position");
+		HColumnDescriptor file = new HColumnDescriptor("File");
+		hTable.addFamily(position);
+		hTable.addFamily(file);
+		Table table = connection.getTable(TABLENAME);
+		admin.close();
+
+		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+			BufferedImage img = toBufferedImage(t._2);
+			insertTile(table, t._1, img);
 		});
 	}
 	
@@ -330,7 +374,13 @@ public class MapsReader {
 		rddzm9CutGrouped.unpersist();
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		// --- Save as image ---
-		saveAllImages(rddzm9, args[1]);
+		//saveAllImages(rddzm9, args[1]);
+		try {
+			saveAllToHBase(rddzm9, args[1]);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		rddzm9.unpersist();
 		context.close();
 	}
