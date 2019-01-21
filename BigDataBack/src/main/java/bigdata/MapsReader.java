@@ -181,7 +181,7 @@ public class MapsReader {
 		return bi;
 	}
 	
-	private static void saveImg(BufferedImage img, String path) {
+	/*private static void saveImg(BufferedImage img, String path) {
 		try {
 			Files.createDirectories(Paths.get(path).getParent());
 		} catch (IOException e1) {
@@ -192,7 +192,7 @@ public class MapsReader {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
+	}*/
 	
 	/*private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
 		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
@@ -202,8 +202,12 @@ public class MapsReader {
 		});
 	}*/
 	
-	private static void insertTile(Table table, String position, BufferedImage img) throws IOException {
-		String pos = zoom + "/" + position;
+	private static void insertTile(String strpos, BufferedImage img) throws IOException {
+		Configuration config = HBaseConfiguration.create();	
+		Connection connection = ConnectionFactory.createConnection(config);
+		Table table = connection.getTable(TABLENAME);
+		//------------
+		String pos = zoom + "/" + strpos;
 		// instantiate Put class
 		Put p = new Put(Bytes.toBytes(pos)); 
 		// add values using add() method
@@ -213,15 +217,13 @@ public class MapsReader {
 		ImageIO.write(img, "png", baos);
 		p.addColumn(Bytes.toBytes("File"),
 				Bytes.toBytes("Tile"), baos.toByteArray());
-		baos.close();;
+		baos.close();
 		// save the put Instance to the HTable.
 		table.put(p);
 	}
 	
 	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) throws IOException {
-		// instantiate Configuration class
 		Configuration config = HBaseConfiguration.create();	
-		// instantiate HTable class
 		HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
 		Connection connection = ConnectionFactory.createConnection(config);
 		Admin admin = connection.getAdmin();
@@ -229,12 +231,12 @@ public class MapsReader {
 		HColumnDescriptor file = new HColumnDescriptor("File");
 		hTable.addFamily(position);
 		hTable.addFamily(file);
-		Table table = connection.getTable(TABLENAME);
+		//Table table = connection.getTable(TABLENAME);
 		admin.close();
 
 		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
 			BufferedImage img = toBufferedImage(t._2);
-			insertTile(table, t._1, img);
+			insertTile(t._1, img);
 		});
 	}
 	
