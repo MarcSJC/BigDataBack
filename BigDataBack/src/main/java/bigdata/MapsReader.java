@@ -232,6 +232,7 @@ public class MapsReader {
 		hTable.addFamily(position);
 		hTable.addFamily(file);
 		//Table table = connection.getTable(TABLENAME);
+		admin.createTable(hTable);
 		admin.close();
 
 		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
