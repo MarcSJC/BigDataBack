@@ -202,7 +202,8 @@ public class MapsReader {
 		});
 	}*/
 	
-	private static void insertTile(Table table, String pos, BufferedImage img) throws IOException {
+	private static void insertTile(Table table, String position, BufferedImage img) throws IOException {
+		String pos = zoom + "/" + position;
 		// instantiate Put class
 		Put p = new Put(Bytes.toBytes(pos)); 
 		// add values using add() method
