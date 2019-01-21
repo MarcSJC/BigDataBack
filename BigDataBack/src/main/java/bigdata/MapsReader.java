@@ -30,7 +30,7 @@ public class MapsReader {
 	private static final Color SNOW_WHITE = new Color(8421416);
 	private static short minh = 0;
 	private static short maxh = 9000;
-	private static int zoom = 9;
+	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
 	
 	//private static int idimg = 0;
@@ -79,7 +79,7 @@ public class MapsReader {
 	}
 	
 	private static Tuple2<Integer, Integer> getTileNumber(int lat, int lng) {
-		double size = degreePerBaseTile * ((double) dem3Size);
+		int size = (int) (degreePerBaseTile * ((double) dem3Size));
 		//int latPxTotal = 180 * dem3Size;
 		//int lngPxTotal = 360 * dem3Size;
 		int latPx = getLatPixels(lat);
@@ -90,8 +90,8 @@ public class MapsReader {
 	}
 	
 	private static int getTilePixels(int y) {
-		double size = degreePerBaseTile * ((double) dem3Size);
-		return (int) Math.floor(y * size);
+		int size = (int) (degreePerBaseTile * ((double) dem3Size));
+		return y * size;
 	}
 	
 	private static int getYPixels(int lat, int y) {
@@ -109,20 +109,20 @@ public class MapsReader {
 	private static int[] getTileFromIntArray(int[] arr, int size, int demLatGap, int demLngGap, int latGap, int lngGap) {
 		int[] res = new int[size * size]; // default : all 0
 		int limitj, limiti;
-		/*if (latGap != 0) {
+		if (latGap != 0) {
 			limitj = Math.abs(size - latGap);
 		}
 		else {
-			limitj = Math.abs(dem3Size - demLatGap);
+			limitj = dem3Size - demLatGap;
 		}
 		if (lngGap != 0) {
 			limiti = Math.abs(size - lngGap);
 		}
 		else {
-			limiti = Math.abs(dem3Size - demLngGap);
-		}*/
-		limitj = Math.abs(size - latGap);
-		limiti = Math.abs(size - lngGap);
+			limiti = dem3Size - demLngGap;
+		}
+		/*limitj = Math.abs(size - latGap);
+		limiti = Math.abs(size - lngGap);*/
 		int jd = 0, id = 0, py = 0, px = 0;
 		for (int jarr = 0 ; jarr < limitj ; jarr++) {
 			jd = jarr + latGap;
@@ -255,8 +255,9 @@ public class MapsReader {
 			latGap = getYPixels(lat, baseKey._1);
 			lngGap = getXPixels(lng, baseKey._2);
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Coord : " + lat + ", " + lng);
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
-			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> cases : " + Arrays.toString(cases));
+			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> (" + nbTilesLat + ", " + nbTilesLng + ") cases : " + Arrays.toString(cases));
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLatGap : " + Math.abs(size - latGap) + " ou " + Math.abs( 2 * size - latGap));
 			System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + Math.abs(size - lngGap) + " ou " + Math.abs( 2 * size - lngGap));
 			ArrayList<Tuple2<String, int[]>> list = new ArrayList<Tuple2<String, int[]>>();
