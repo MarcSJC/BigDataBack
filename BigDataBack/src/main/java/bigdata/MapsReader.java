@@ -39,7 +39,7 @@ public class MapsReader {
 	private final static int dem3Size = 1201;
 	private final static int tileSize = 256;
 	private static final Color SEA_BLUE = new Color(19455);
-	private static final Color SNOW_WHITE = new Color(8421416);
+	private static final Color SNOW_WHITE = Color.WHITE;//new Color(8421416);
 	private static short minh = 0;
 	private static short maxh = 9000;
 	private static int zoom = 8;
@@ -55,20 +55,45 @@ public class MapsReader {
 		return new Color(r, g, b).getRGB();
 	}
 	
-	private static int getIntFromColor(int i) {
+	/*private static int colorGradient(int ir, int ig, int ib) {
 		int red, green, blue;
-		red = (byte) (i & 0xFF);
+		red = (byte) (maxh & 0xFF);
+		green = (byte) ((maxh >> 8) & 0xFF);
+		blue = (byte) ((maxh >> 16) & 0xFF);
+		int r = (int) (255.0 * (ir) / (red));
+		int g = (int) (255.0 * (ig) / (green));
+		int b = (int) (255.0 * (ib) / (blue));
+		//return new Color(r, g, b).getRGB();
+		return SNOW_WHITE.getRGB();
+	}*/
+	
+	/*private static int colorGradient(int value) {
+		double ratio = (value - minh) / (maxh - minh);
+		int r = (int) (Double.max(0, 255 * (1 - ratio)));
+		int b = (int) (Double.max(0, 255 * (ratio - 1)));
+		int g = 255 - b - r;
+		return new Color(r, g, b).getRGB();
+	}*/
+	
+	private static int getIntFromColor(int i) {
+		double red, green, blue;
+		blue = (byte) (i & 0xFF);
 		green = (byte) ((i >> 8) & 0xFF);
-		blue = (byte) ((i >> 16) & 0xFF);
+		red = (byte) ((i >> 16) & 0xFF);
+		double maxred, maxgreen, maxblue;
+		maxblue = (byte) (maxh & 0xFF);
+		maxgreen = (byte) ((maxh >> 8) & 0xFF);
+		maxred = (byte) ((maxh >> 16) & 0xFF);
 		int rgb;
 		if (i <= minh) {
 			rgb = SEA_BLUE.getRGB();
 		}
 		else {
-			double pred = Double.max(0, (Math.log(red) / Math.log(maxh)));
-			double pgreen = Double.max(0, (Math.log(green) / Math.log(maxh)));
-			double pblue = Double.max(0, (Math.log(blue) / Math.log(maxh)));
+			double pred = Double.max(0, ((red) / (maxred)));
+			double pgreen = Double.max(0, ((green) / (maxgreen)));
+			double pblue = Double.max(0, ((blue) / (maxblue)));
 			rgb = colorGradient(pred, pgreen, pblue);
+			//rgb = colorGradient(i);
 		}
 	    return rgb;
 	}
@@ -181,7 +206,7 @@ public class MapsReader {
 		return bi;
 	}
 	
-	/*private static void saveImg(BufferedImage img, String path) {
+	private static void saveImg(BufferedImage img, String path) {
 		try {
 			Files.createDirectories(Paths.get(path).getParent());
 		} catch (IOException e1) {
@@ -192,15 +217,15 @@ public class MapsReader {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}*/
+	}
 	
-	/*private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
+	private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
 		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
 			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1 + ".png";
 			BufferedImage img = toBufferedImage(t._2);
 			saveImg(img, imgpath);
 		});
-	}*/
+	}
 	
 	private static void insertTile(String strpos, BufferedImage img) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
@@ -232,6 +257,10 @@ public class MapsReader {
 		hTable.addFamily(position);
 		hTable.addFamily(file);
 		//Table table = connection.getTable(TABLENAME);
+		if (admin.tableExists(hTable.getTableName())) {
+			admin.disableTable(hTable.getTableName());
+			admin.deleteTable(hTable.getTableName());
+		}
 		admin.createTable(hTable);
 		admin.close();
 
@@ -378,13 +407,13 @@ public class MapsReader {
 		rddzm9CutGrouped.unpersist();
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		// --- Save as image ---
-		//saveAllImages(rddzm9, args[1]);
-		try {
+		saveAllImages(rddzm9, args[1]);
+		/*try {
 			saveAllToHBase(rddzm9, args[1]);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
+		}*/
 		rddzm9.unpersist();
 		context.close();
 	}
