@@ -20,7 +20,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-//import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -39,7 +39,7 @@ public class MapsReader {
 	private final static int dem3Size = 1201;
 	private final static int tileSize = 256;
 	private static final Color SEA_BLUE = new Color(19455);
-	private static final Color SNOW_WHITE = Color.WHITE;//new Color(8421416);
+	private static final Color SNOW_WHITE = new Color(242, 242, 242);
 	private static final Color MOUNTAIN_ROCK = new Color(115, 77, 38);
 	private static final Color GRASS = new Color(0, 179, 0);
 	private static final Color SWAMP = new Color(119, 119, 60);
@@ -48,7 +48,7 @@ public class MapsReader {
 	private static short maxh = 9000;
 	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
-	//static TableName TABLENAME = TableName.valueOf("PascalTestTiles");
+	static TableName TABLENAME = TableName.valueOf("PascalTestTiles");
 		
 	private static int colorGradient(int value, double pred, double pgreen, double pblue) {
 		Color col1, col2;
@@ -78,48 +78,20 @@ public class MapsReader {
 		return new Color(r, g, b).getRGB();
 	}
 	
-	/*private static int colorGradient(int ir, int ig, int ib) {
-		int red, green, blue;
-		red = (byte) (maxh & 0xFF);
-		green = (byte) ((maxh >> 8) & 0xFF);
-		blue = (byte) ((maxh >> 16) & 0xFF);
-		int r = (int) (255.0 * (ir) / (red));
-		int g = (int) (255.0 * (ig) / (green));
-		int b = (int) (255.0 * (ib) / (blue));
-		//return new Color(r, g, b).getRGB();
-		return SNOW_WHITE.getRGB();
-	}*/
-	
-	/*private static int colorGradient(int value) {
-		double ratio = (value - minh) / (maxh - minh);
-		int r = (int) (Double.max(0, 255 * (1 - ratio)));
-		int b = (int) (Double.max(0, 255 * (ratio - 1)));
-		int g = 255 - b - r;
-		return new Color(r, g, b).getRGB();
-	}*/
-	
 	private static int getIntFromColor(int i) {
 		double red, green, blue;
 		blue = (byte) (i & 0xFF);
 		green = (byte) ((i >> 8) & 0xFF);
 		red = (byte) ((i >> 16) & 0xFF);
-		double maxred, maxgreen, maxblue;
-		maxblue = (byte) (maxh & 0xFF);
-		maxgreen = (byte) ((maxh >> 8) & 0xFF);
-		maxred = (byte) ((maxh >> 16) & 0xFF);
 		int rgb;
 		if (i <= minh) {
 			rgb = SEA_BLUE.getRGB();
 		}
 		else {
-			/*double pred = Double.max(0, ((red) / (maxred)));
-			double pgreen = Double.max(0, ((green) / (maxgreen)));
-			double pblue = Double.max(0, ((blue) / (maxblue)));*/
 			double pred = Double.max(0, ((red) / (maxh)));
 			double pgreen = Double.max(0, ((green) / (maxh)));
 			double pblue = Double.max(0, ((blue) / (maxh)));
 			rgb = colorGradient(i, pred, pgreen, pblue);
-			//rgb = colorGradient(i);
 		}
 	    return rgb;
 	}
@@ -253,7 +225,7 @@ public class MapsReader {
 		});
 	}
 	
-	/*private static void insertTile(String strpos, BufferedImage img) throws IOException {
+	private static void insertTile(String strpos, BufferedImage img) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		Connection connection = ConnectionFactory.createConnection(config);
 		Table table = connection.getTable(TABLENAME);
@@ -271,9 +243,9 @@ public class MapsReader {
 		baos.close();
 		// save the put Instance to the HTable.
 		table.put(p);
-	}*/
+	}
 	
-	/*private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) throws IOException {
+	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
 		Connection connection = ConnectionFactory.createConnection(config);
@@ -294,7 +266,7 @@ public class MapsReader {
 			BufferedImage img = toBufferedImage(t._2);
 			insertTile(t._1, img);
 		});
-	}*/
+	}
 	
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
@@ -421,9 +393,9 @@ public class MapsReader {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			Iterator<int[]> it = t._2.iterator();
 			int[] tile = it.next();
-			int l = 1;
+			//int l = 1;
 			while (it.hasNext()) {
-				l++;
+				//l++;
 				tile = aggregateIntArrays(tile, it.next());
 			}
 			ImageIcon img = intToImg(tile, size);
@@ -433,13 +405,13 @@ public class MapsReader {
 		rddzm9CutGrouped.unpersist();
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		// --- Save as image ---
-		saveAllImages(rddzm9, args[1]);
-		/*try {
+		//saveAllImages(rddzm9, args[1]);
+		try {
 			saveAllToHBase(rddzm9, args[1]);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}*/
+		}
 		rddzm9.unpersist();
 		context.close();
 	}
