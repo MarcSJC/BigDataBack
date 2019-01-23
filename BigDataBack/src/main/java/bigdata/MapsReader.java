@@ -20,7 +20,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.TableName;
+//import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
@@ -40,18 +40,41 @@ public class MapsReader {
 	private final static int tileSize = 256;
 	private static final Color SEA_BLUE = new Color(19455);
 	private static final Color SNOW_WHITE = Color.WHITE;//new Color(8421416);
+	private static final Color MOUNTAIN_ROCK = new Color(115, 77, 38);
+	private static final Color GRASS = new Color(0, 179, 0);
+	private static final Color SWAMP = new Color(119, 119, 60);
+	private static final Color CAPPUCCINO = new Color(204, 153, 102);
 	private static short minh = 0;
 	private static short maxh = 9000;
 	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
-	static TableName TABLENAME = TableName.valueOf("PascalTestTiles");
-	//static TableName POSNAME = TableName.valueOf("Position");
-	//static TableName FILENAME = TableName.valueOf("File");
+	//static TableName TABLENAME = TableName.valueOf("PascalTestTiles");
 		
-	private static int colorGradient(double pred, double pgreen, double pblue) {
-		int r = (int) (SEA_BLUE.getRed() * pred + SNOW_WHITE.getRed() * (1 - pred));
-		int g = (int) (SEA_BLUE.getGreen() * pgreen + SNOW_WHITE.getGreen() * (1 - pgreen));
-		int b = (int) (SEA_BLUE.getBlue() * pblue + SNOW_WHITE.getBlue() * (1 - pblue));
+	private static int colorGradient(int value, double pred, double pgreen, double pblue) {
+		Color col1, col2;
+		if (value > 3500) {
+			col1 = CAPPUCCINO;
+			col2 = SNOW_WHITE;
+		}
+		else if (value > 2000) {
+			col1 = MOUNTAIN_ROCK;
+			col2 = CAPPUCCINO;
+		}
+		else if (value > 600) {
+			col1 = SWAMP;
+			col2 = MOUNTAIN_ROCK;
+		}
+		else if (value > 200) {
+			col1 = GRASS;
+			col2 = SWAMP;
+		}
+		else {
+			col1 = SEA_BLUE;
+			col2 = GRASS;
+		}
+		int r = (int) (col1.getRed() * pred + col2.getRed() * (1 - pred));
+		int g = (int) (col1.getGreen() * pgreen + col2.getGreen() * (1 - pgreen));
+		int b = (int) (col1.getBlue() * pblue + col2.getBlue() * (1 - pblue));
 		return new Color(r, g, b).getRGB();
 	}
 	
@@ -89,10 +112,13 @@ public class MapsReader {
 			rgb = SEA_BLUE.getRGB();
 		}
 		else {
-			double pred = Double.max(0, ((red) / (maxred)));
+			/*double pred = Double.max(0, ((red) / (maxred)));
 			double pgreen = Double.max(0, ((green) / (maxgreen)));
-			double pblue = Double.max(0, ((blue) / (maxblue)));
-			rgb = colorGradient(pred, pgreen, pblue);
+			double pblue = Double.max(0, ((blue) / (maxblue)));*/
+			double pred = Double.max(0, ((red) / (maxh)));
+			double pgreen = Double.max(0, ((green) / (maxh)));
+			double pblue = Double.max(0, ((blue) / (maxh)));
+			rgb = colorGradient(i, pred, pgreen, pblue);
 			//rgb = colorGradient(i);
 		}
 	    return rgb;
@@ -227,7 +253,7 @@ public class MapsReader {
 		});
 	}
 	
-	private static void insertTile(String strpos, BufferedImage img) throws IOException {
+	/*private static void insertTile(String strpos, BufferedImage img) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		Connection connection = ConnectionFactory.createConnection(config);
 		Table table = connection.getTable(TABLENAME);
@@ -245,9 +271,9 @@ public class MapsReader {
 		baos.close();
 		// save the put Instance to the HTable.
 		table.put(p);
-	}
+	}*/
 	
-	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) throws IOException {
+	/*private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
 		Connection connection = ConnectionFactory.createConnection(config);
@@ -268,7 +294,7 @@ public class MapsReader {
 			BufferedImage img = toBufferedImage(t._2);
 			insertTile(t._1, img);
 		});
-	}
+	}*/
 	
 	public static void main(String[] args) {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
