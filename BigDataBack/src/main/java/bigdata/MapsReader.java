@@ -5,12 +5,8 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 
 import javax.imageio.ImageIO;
@@ -204,36 +200,13 @@ public class MapsReader {
 		return bi;
 	}
 	
-	private static void saveImg(BufferedImage img, String path) {
-		try {
-			Files.createDirectories(Paths.get(path).getParent());
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			ImageIO.write(img, "png", new File(path));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
-		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
-			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1 + ".png";
-			BufferedImage img = toBufferedImage(t._2);
-			saveImg(img, imgpath);
-		});
-	}
-	
 	private static void insertTile(String strpos, BufferedImage img) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		Connection connection = ConnectionFactory.createConnection(config);
 		Table table = connection.getTable(TABLENAME);
 		//------------
 		String pos = zoom + "/" + strpos;
-		// instantiate Put class
 		Put p = new Put(Bytes.toBytes(pos)); 
-		// add values using add() method
 		p.addColumn(Bytes.toBytes("Position"),
 				Bytes.toBytes("Path"), Bytes.toBytes(pos));
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -241,7 +214,6 @@ public class MapsReader {
 		p.addColumn(Bytes.toBytes("File"),
 				Bytes.toBytes("Tile"), baos.toByteArray());
 		baos.close();
-		// save the put Instance to the HTable.
 		table.put(p);
 	}
 	
@@ -254,7 +226,6 @@ public class MapsReader {
 		HColumnDescriptor file = new HColumnDescriptor("File");
 		hTable.addFamily(position);
 		hTable.addFamily(file);
-		//Table table = connection.getTable(TABLENAME);
 		if (admin.tableExists(hTable.getTableName())) {
 			admin.disableTable(hTable.getTableName());
 			admin.deleteTable(hTable.getTableName());
@@ -272,7 +243,6 @@ public class MapsReader {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
 		context.setLogLevel("WARN");
-		// ----------- Test lecture -----------
 		String rawpath = args[0];
 		JavaPairRDD<Text, IntArrayWritable> rddRaw = context.sequenceFile(rawpath, Text.class, IntArrayWritable.class);
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> rddRaw : " + rddRaw.count());
@@ -306,7 +276,6 @@ public class MapsReader {
 			if (Math.abs(endKey._2 - baseKey._2) > 1) nbTilesLng = 3; 
 			else nbTilesLng = 2;
 			int[] cases = new int[nbTilesLat * nbTilesLng];
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> nbTilesLat, nbTilesLng : " + nbTilesLat + ", " + nbTilesLng);
 			cases[0] = 0;
 			cases[1] = 1;
 			cases[2] = 2;
@@ -330,11 +299,6 @@ public class MapsReader {
 			latGap = getYPixels(lat, baseKey._1);
 			lngGap = getXPixels(lng, baseKey._2);
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Coord : " + lat + ", " + lng);
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> GAPS : " + latGap + ", " + lngGap);
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> (" + nbTilesLat + ", " + nbTilesLng + ") cases : " + Arrays.toString(cases));
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLatGap : " + Math.abs(size - latGap) + " ou " + Math.abs( 2 * size - latGap));
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> demLngGap : " + Math.abs(size - lngGap) + " ou " + Math.abs( 2 * size - lngGap));
 			ArrayList<Tuple2<String, int[]>> list = new ArrayList<Tuple2<String, int[]>>();
 			for (int i : cases) {
 				String key;
@@ -376,10 +340,8 @@ public class MapsReader {
 						key = baseKey._2 + "/" + baseKey._1;
 						tilePart = getTileFromIntArray(t._2, size, 0, 0, latGap, lngGap);
 				}
-				//key += idimg++;
 				Tuple2<String, int[]> item = new Tuple2<String, int[]>(key, tilePart);
 				list.add(item);
-				//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> case : " + i + " (" + key + ")");
 			}
 			// --- Return ---
 			return list.iterator();
@@ -393,23 +355,18 @@ public class MapsReader {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			Iterator<int[]> it = t._2.iterator();
 			int[] tile = it.next();
-			//int l = 1;
 			while (it.hasNext()) {
-				//l++;
 				tile = aggregateIntArrays(tile, it.next());
 			}
 			ImageIcon img = intToImg(tile, size);
-			//System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> TILE : " + t._1 + "(" + l + ")");
 			return new Tuple2<String, ImageIcon>(t._1, img);
 		});
 		rddzm9CutGrouped.unpersist();
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
-		// --- Save as image ---
-		//saveAllImages(rddzm9, args[1]);
+		// --- Save to hbase ---
 		try {
 			saveAllToHBase(rddzm9, args[1]);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		rddzm9.unpersist();
