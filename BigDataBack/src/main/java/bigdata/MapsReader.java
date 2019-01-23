@@ -260,7 +260,7 @@ public class MapsReader {
 			Tuple2<Integer, Integer> latlng = new Tuple2<Integer, Integer>(lat, lng);
 			Tuple2<Tuple2<Integer, Integer>, int[]> res = new Tuple2<Tuple2<Integer, Integer>, int[]>(latlng, newVal);
 			return res;
-		}).cache();
+		});//.cache();
 		//
 		JavaPairRDD<String, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
 			// --- Coordinates ---
@@ -345,12 +345,12 @@ public class MapsReader {
 			}
 			// --- Return ---
 			return list.iterator();
-		}).cache();
-		rddRaw.unpersist();
+		});//.cache();
+		//rddRaw.unpersist();
 		
 		JavaPairRDD<String, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey();
 	
-		rddzm9Cut.unpersist();
+		//rddzm9Cut.unpersist();
 		JavaPairRDD<String, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<String, Iterable<int[]>> t) -> {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			Iterator<int[]> it = t._2.iterator();
@@ -361,7 +361,7 @@ public class MapsReader {
 			ImageIcon img = intToImg(tile, size);
 			return new Tuple2<String, ImageIcon>(t._1, img);
 		});
-		rddzm9CutGrouped.unpersist();
+		//rddzm9CutGrouped.unpersist();
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		// --- Save to hbase ---
 		try {
@@ -369,7 +369,7 @@ public class MapsReader {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		rddzm9.unpersist();
+		//rddzm9.unpersist();
 		context.close();
 	}
 
