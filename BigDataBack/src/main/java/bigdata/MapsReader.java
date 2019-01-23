@@ -5,7 +5,10 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -84,9 +87,9 @@ public class MapsReader {
 			rgb = SEA_BLUE.getRGB();
 		}
 		else {
-			double pred = Double.max(0, ((red) / (maxh)));
-			double pgreen = Double.max(0, ((green) / (maxh)));
-			double pblue = Double.max(0, ((blue) / (maxh)));
+			double pred = Double.max(0, ((i) / (maxh)));
+			double pgreen = Double.max(0, ((i) / (maxh)));
+			double pblue = Double.max(0, ((i) / (maxh)));
 			rgb = colorGradient(i, pred, pgreen, pblue);
 		}
 	    return rgb;
@@ -200,13 +203,35 @@ public class MapsReader {
 		return bi;
 	}
 	
+	private static void saveImg(BufferedImage img, String path) {
+		try {
+			Files.createDirectories(Paths.get(path).getParent());
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
+		File f = new File(path);
+		try {
+			ImageIO.write(img, "png", f);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
+		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1 + ".png";
+			BufferedImage img = toBufferedImage(t._2);
+			saveImg(img, imgpath);
+		});
+	}
+	
 	private static void insertTile(String strpos, BufferedImage img) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		Connection connection = ConnectionFactory.createConnection(config);
 		Table table = connection.getTable(TABLENAME);
 		//------------
 		String pos = zoom + "/" + strpos;
-		Put p = new Put(Bytes.toBytes(pos)); 
+		Put p = new Put(Bytes.toBytes(pos));
 		p.addColumn(Bytes.toBytes("Position"),
 				Bytes.toBytes("Path"), Bytes.toBytes(pos));
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -217,7 +242,7 @@ public class MapsReader {
 		table.put(p);
 	}
 	
-	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) throws IOException {
+	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
 		Connection connection = ConnectionFactory.createConnection(config);
@@ -260,7 +285,7 @@ public class MapsReader {
 			Tuple2<Integer, Integer> latlng = new Tuple2<Integer, Integer>(lat, lng);
 			Tuple2<Tuple2<Integer, Integer>, int[]> res = new Tuple2<Tuple2<Integer, Integer>, int[]>(latlng, newVal);
 			return res;
-		});//.cache();
+		}).cache();
 		//
 		JavaPairRDD<String, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
 			// --- Coordinates ---
@@ -345,12 +370,12 @@ public class MapsReader {
 			}
 			// --- Return ---
 			return list.iterator();
-		});//.cache();
-		//rddRaw.unpersist();
+		}).cache();
+		rddRaw.unpersist();
 		
 		JavaPairRDD<String, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey();
 	
-		//rddzm9Cut.unpersist();
+		rddzm9Cut.unpersist();
 		JavaPairRDD<String, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<String, Iterable<int[]>> t) -> {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			Iterator<int[]> it = t._2.iterator();
@@ -360,17 +385,41 @@ public class MapsReader {
 			}
 			ImageIcon img = intToImg(tile, size);
 			return new Tuple2<String, ImageIcon>(t._1, img);
-		});
-		//rddzm9CutGrouped.unpersist();
+		}).cache();
+		rddzm9CutGrouped.unpersist();
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
 		// --- Save to hbase ---
+		/*try {
+			saveAllToHBase(rddzm9);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}*/
+		//saveAllImages(rddzm9, args[1]);
 		try {
-			saveAllToHBase(rddzm9, args[1]);
+			Configuration config = HBaseConfiguration.create();	
+			HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
+			Connection connection = ConnectionFactory.createConnection(config);
+			Admin admin = connection.getAdmin();
+			HColumnDescriptor position = new HColumnDescriptor("Position");
+			HColumnDescriptor file = new HColumnDescriptor("File");
+			hTable.addFamily(position);
+			hTable.addFamily(file);
+			if (admin.tableExists(hTable.getTableName())) {
+				admin.disableTable(hTable.getTableName());
+				admin.deleteTable(hTable.getTableName());
+			}
+			admin.createTable(hTable);
+			admin.close();
+	
+			rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+				BufferedImage img = toBufferedImage(t._2);
+				insertTile(t._1, img);
+			});
+			context.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		//rddzm9.unpersist();
-		context.close();
 	}
 
 }
