@@ -47,7 +47,7 @@ public class MapsReader {
 	private static short maxh = 9000;
 	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
-	static TableName TABLENAME = TableName.valueOf("PascalTestTiles");
+	static TableName TABLENAME = TableName.valueOf("PascalTestTiles2");
 		
 	private static int colorGradient(int value, double pred, double pgreen, double pblue) {
 		Color col1, col2;
@@ -264,7 +264,7 @@ public class MapsReader {
 		});
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
 		context.setLogLevel("WARN");
@@ -395,7 +395,7 @@ public class MapsReader {
 			e.printStackTrace();
 		}*/
 		//saveAllImages(rddzm9, args[1]);
-		try {
+		//try {
 			Configuration config = HBaseConfiguration.create();	
 			HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
 			Connection connection = ConnectionFactory.createConnection(config);
@@ -415,10 +415,11 @@ public class MapsReader {
 				BufferedImage img = toBufferedImage(t._2);
 				insertTile(t._1, img);
 			});
+			connection.close();
 			context.close();
-		} catch (IOException e) {
+		/*} catch (IOException e) {
 			e.printStackTrace();
-		}
+		}*/
 		//rddzm9.unpersist();
 	}
 
