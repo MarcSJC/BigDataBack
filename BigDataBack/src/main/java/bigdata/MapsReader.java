@@ -228,13 +228,13 @@ public class MapsReader {
 		return new ImageIcon(resize(image, tileSize, tileSize));
 	}
 	
-	/*private static void saveImg(BufferedImage img, String path) {
+	private static void saveImg(BufferedImage img, String path) {
 		try {
 			Files.createDirectories(Paths.get(path).getParent());
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		File f = new File(path);
+		File f = new File(path+".png");
 		try {
 			ImageIO.write(img, "png", f);
 		} catch (IOException e) {
@@ -242,7 +242,7 @@ public class MapsReader {
 		}
 	}
 	
-	private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm8, String dirpath) {
+	/*private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm8, String dirpath) {
 		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
 			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1 + ".png";
 			BufferedImage img = toBufferedImage(t._2);
@@ -416,11 +416,13 @@ public class MapsReader {
 		
 		// --- Save to hbase --
 		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
-			ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
+			//ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 			BufferedImage img = toBufferedImage(t._2);
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			/*ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write(img, "png", baos);
-			HBaseLink.HBaseProg.put(t._1, baos.toByteArray());
+			HBaseLink.HBaseProg.put(t._1, baos.toByteArray());*/
+			// TEST LOCAL
+			saveImg(img, args[1]+"/"+t._1);
 		});
 		
 		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> rddzm8Keyed = rddzm8.mapToPair((Tuple2<String, ImageIcon> t) -> {
@@ -428,6 +430,7 @@ public class MapsReader {
 			int z = Integer.parseInt(tokens[0]);
 			int x = Integer.parseInt(tokens[1]);
 			int y = Integer.parseInt(tokens[2]);
+			Tuple3<Integer, Integer, Integer> oldKey = new Tuple3<Integer, Integer, Integer>(z, x, y);
 			if (x % 2 != 0) {
 				x--;
 			}
@@ -435,7 +438,7 @@ public class MapsReader {
 				y--;
 			}
 			Tuple3<Integer, Integer, Integer> newKey = new Tuple3<Integer, Integer, Integer>(z, x, y);
-			Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon> newVal = new Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>(newKey, t._2);
+			Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon> newVal = new Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>(oldKey, t._2);
 			Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> res = new Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>(newKey, newVal);
 			return res;
 		});
@@ -491,11 +494,14 @@ public class MapsReader {
 		rddzm8Grouped.unpersist();
 		
 		rddzm7.foreach((Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> t) -> {
-			ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
+			//ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 			BufferedImage img = toBufferedImage(t._2._2);
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			String path = t._2._1._1() + "/" + t._2._1._2() + "/" + t._2._1._3();
+			/*ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write(img, "png", baos);
-			HBaseLink.HBaseProg.put(t._2._1._1() + "/" + t._2._1._2() + "/" + t._2._1._3(), baos.toByteArray());
+			HBaseLink.HBaseProg.put(path, baos.toByteArray());*/
+			// TEST LOCAL
+			saveImg(img, args[1]+"/"+path);
 		});
 		rddzm7.unpersist();
 		
