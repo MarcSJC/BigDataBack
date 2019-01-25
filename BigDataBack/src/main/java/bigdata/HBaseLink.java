@@ -18,7 +18,7 @@ public class HBaseLink {
 
 	public static class HBaseProg extends Configured implements Tool {
 		
-		protected static TableName TABLE_NAME = TableName.valueOf("PascalTestTiles4");
+		protected static TableName TABLE_NAME = TableName.valueOf("PascalTestTiles5");
 		private static Connection connection;
 		private static Table table;
 
