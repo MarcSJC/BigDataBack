@@ -11,6 +11,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -32,6 +35,8 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.function.PairFlatMapFunction;
+import org.apache.spark.api.java.function.VoidFunction;
 
 import scala.Tuple2;
 import scala.Tuple3;
@@ -447,7 +452,7 @@ public class MapsReader {
 		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Iterable<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> rddzm8Grouped = rddzm8Keyed.groupByKey().cache();
 		rddzm8Keyed.unpersist();
 		
-		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> rddzm7 = rddzm8Grouped.flatMapToPair((Tuple2<Tuple3<Integer, Integer, Integer>, Iterable<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> t) -> {
+		PairFlatMapFunction<Tuple2<Tuple3<Integer, Integer, Integer>, Iterable<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>>, Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> lambdagreg = (Tuple2<Tuple3<Integer, Integer, Integer>, Iterable<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> t) -> {
 			ArrayList<Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> list = new ArrayList<Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>>();
 			int z = t._1._1() - 1;
 			int x = t._1._2();
@@ -490,10 +495,9 @@ public class MapsReader {
 			Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> res = new Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>(key, val);
 			list.add(res);
 			return list.iterator();
-		});
-		rddzm8Grouped.unpersist();
+		};
 		
-		rddzm7.foreach((Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> t) -> {
+		VoidFunction<Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> lambdasave = (Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> t) -> {
 			//ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 			BufferedImage img = toBufferedImage(t._2._2);
 			String path = t._2._1._1() + "/" + t._2._1._2() + "/" + t._2._1._3();
@@ -502,8 +506,19 @@ public class MapsReader {
 			HBaseLink.HBaseProg.put(path, baos.toByteArray());*/
 			// TEST LOCAL
 			saveImg(img, args[1]+"/"+path);
-		});
-		rddzm7.unpersist();
+		};
+		
+		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> rddn1 = rddzm8Grouped.flatMapToPair(lambdagreg).cache();
+		rddzm8Grouped.unpersist();
+		rddn1.foreach(lambdasave);
+		
+		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Iterable<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> rddn2;
+		for (int i = 7 ; i > 0 ; i--) {
+			rddn2 = rddn1.groupByKey().cache();
+			rddn1.unpersist();
+			rddn1 = rddn2.flatMapToPair(lambdagreg).cache();
+			rddn1.foreach(lambdasave);
+		}
 		
 		context.close();
 	}
