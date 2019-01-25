@@ -34,6 +34,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import scala.Tuple2;
+import scala.Tuple3;
 
 public class MapsReader {
 	
@@ -49,7 +50,6 @@ public class MapsReader {
 	private static short maxh = 9000;
 	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
-	static TableName TABLENAME = TableName.valueOf("PascalTestTiles3");
 		
 	private static int colorGradient(int value, double pred, double pgreen, double pblue) {
 		Color col1, col2;
@@ -205,14 +205,25 @@ public class MapsReader {
 		return bi;
 	}
 	
-	private static ImageIcon combine4Img(ImageIcon i00, ImageIcon i01, ImageIcon i10, ImageIcon i11) {
+	private static ImageIcon combine4Img(ImageIcon[] imgs) {
 		int w = 2 * tileSize;
 		BufferedImage image = new BufferedImage(w, w, BufferedImage.TYPE_INT_RGB);
 		Graphics2D g2 = image.createGraphics();
-		g2.drawImage(i00.getImage(), 0, 0, null);
-		g2.drawImage(i01.getImage(), tileSize, 0, null);
-		g2.drawImage(i10.getImage(), 0, tileSize, null);
-		g2.drawImage(i11.getImage(), tileSize, tileSize, null);
+		for (int i = 0 ; i < 4 ; i++) {
+			if (imgs[i] == null) {
+				BufferedImage bImg = new BufferedImage(tileSize, tileSize, BufferedImage.TYPE_INT_RGB);
+				Graphics2D graphics = bImg.createGraphics();
+				graphics.setPaint(SEA_BLUE);
+				graphics.fillRect(0, 0, bImg.getWidth(), bImg.getHeight());
+
+				ImageIcon ocean = new ImageIcon(bImg);
+				imgs[i] = ocean;
+			}
+		}
+		g2.drawImage(imgs[0].getImage(), 0, 0, null);
+		g2.drawImage(imgs[1].getImage(), tileSize, 0, null);
+		g2.drawImage(imgs[2].getImage(), 0, tileSize, null);
+		g2.drawImage(imgs[3].getImage(), tileSize, tileSize, null);
 		g2.dispose();
 		return new ImageIcon(resize(image, tileSize, tileSize));
 	}
@@ -379,7 +390,7 @@ public class MapsReader {
 						key = baseKey._2 + "/" + baseKey._1;
 						tilePart = getTileFromIntArray(t._2, size, 0, 0, latGap, lngGap);
 				}
-				Tuple2<String, int[]> item = new Tuple2<String, int[]>(key, tilePart);
+				Tuple2<String, int[]> item = new Tuple2<String, int[]>(zoom + "/" + key, tilePart);
 				list.add(item);
 			}
 			// --- Return ---
@@ -430,17 +441,19 @@ public class MapsReader {
 				insertTile(t._1, img);
 			});
 			connection.close();*/
-		ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
+		//ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 		
 		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
+			ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 			BufferedImage img = toBufferedImage(t._2);
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write(img, "png", baos);
 			HBaseLink.HBaseProg.put(t._1, baos.toByteArray());
 		});
 		
-		JavaPairRDD<String, Tuple2<String, ImageIcon>> rddzm8Grouped = rddzm8.mapToPair((Tuple2<String, ImageIcon> t) -> {
+		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> rddzm8Keyed = rddzm8.mapToPair((Tuple2<String, ImageIcon> t) -> {
 			String[] tokens = t._1.split("/");
+			int z = Integer.parseInt(tokens[0]);
 			int x = Integer.parseInt(tokens[1]);
 			int y = Integer.parseInt(tokens[2]);
 			if (x % 2 != 0) {
@@ -449,12 +462,70 @@ public class MapsReader {
 			if (y % 2 != 0) {
 				y--;
 			}
-			String newKey = tokens[0] + "/" + x + "/" + y;
-			Tuple2<String, ImageIcon> newVal = new Tuple2<String, ImageIcon>();
+			Tuple3<Integer, Integer, Integer> newKey = new Tuple3<Integer, Integer, Integer>(z, x, y);
+			Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon> newVal = new Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>(newKey, t._2);
+			Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> res = new Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>(newKey, newVal);
+			return res;
 		});
 		rddzm8.unpersist();
 		
+		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Iterable<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> rddzm8Grouped = rddzm8Keyed.groupByKey().cache();
+		rddzm8Keyed.unpersist();
+		
+		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> rddzm7 = rddzm8Grouped.flatMapToPair((Tuple2<Tuple3<Integer, Integer, Integer>, Iterable<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> t) -> {
+			ArrayList<Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> list = new ArrayList<Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>>();
+			int z = t._1._1() - 1;
+			int x = t._1._2();
+			int y = t._1._3();
+			if (x % 2 != 0) {
+				x--;
+			}
+			if (y % 2 != 0) {
+				y--;
+			}
+			x /= 2;
+			y /= 2;
+			int kx = x;
+			int ky = y;
+			if (kx % 2 != 0) {
+				kx--;
+			}
+			if (y % 2 != 0) {
+				ky--;
+			}
+			Tuple3<Integer, Integer, Integer> key = new Tuple3<Integer, Integer, Integer>(z, kx, ky);
+			Tuple3<Integer, Integer, Integer> valkey = new Tuple3<Integer, Integer, Integer>(z, x, y);
+			Iterator<Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> it = t._2.iterator();
+			ImageIcon[] imgArr = new ImageIcon[4];
+			while (it.hasNext()) {
+				Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon> item = it.next();
+				int i = 0;
+				int ix = item._1._2();
+				int iy = item._1._3();
+				if (ix % 2 != 0) {
+					i += 1;
+				}
+				if (iy % 2 != 0) {
+					i += 2;
+				}
+				imgArr[i] = item._2;
+			}
+			ImageIcon newImg = combine4Img(imgArr);
+			Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon> val = new Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>(valkey, newImg);
+			Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> res = new Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>(key, val);
+			list.add(res);
+			return list.iterator();
+		});
 		rddzm8Grouped.unpersist();
+		
+		rddzm7.foreach((Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> t) -> {
+			ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
+			BufferedImage img = toBufferedImage(t._2._2);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ImageIO.write(img, "png", baos);
+			HBaseLink.HBaseProg.put(t._2._1._1() + "/" + t._1, baos.toByteArray());
+		});
+		rddzm7.unpersist();
 		
 		context.close();
 		/*} catch (IOException e) {
