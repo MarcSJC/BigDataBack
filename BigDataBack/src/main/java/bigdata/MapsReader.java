@@ -11,29 +11,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.Admin;
-import org.apache.hadoop.hbase.client.Connection;
-import org.apache.hadoop.hbase.client.ConnectionFactory;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Table;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
-import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.api.java.function.VoidFunction;
@@ -85,10 +70,6 @@ public class MapsReader {
 	}
 	
 	private static int getIntFromColor(int i) {
-		double red, green, blue;
-		blue = (byte) (i & 0xFF);
-		green = (byte) ((i >> 8) & 0xFF);
-		red = (byte) ((i >> 16) & 0xFF);
 		int rgb;
 		if (i <= minh) {
 			rgb = SEA_BLUE.getRGB();
@@ -233,7 +214,7 @@ public class MapsReader {
 		return new ImageIcon(resize(image, tileSize, tileSize));
 	}
 	
-	private static void saveImg(BufferedImage img, String path) {
+	/*private static void saveImg(BufferedImage img, String path) {
 		try {
 			Files.createDirectories(Paths.get(path).getParent());
 		} catch (IOException e1) {
@@ -245,53 +226,6 @@ public class MapsReader {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
-	
-	/*private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm8, String dirpath) {
-		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
-			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1 + ".png";
-			BufferedImage img = toBufferedImage(t._2);
-			saveImg(img, imgpath);
-		});
-	}*/
-	
-	/*private static void insertTile(String strpos, BufferedImage img) throws IOException {
-		Configuration config = HBaseConfiguration.create();	
-		Connection connection = ConnectionFactory.createConnection(config);
-		Table table = connection.getTable(TABLENAME);
-		//------------
-		String pos = zoom + "/" + strpos;
-		Put p = new Put(Bytes.toBytes(pos));
-		p.addColumn(Bytes.toBytes("Position"),
-				Bytes.toBytes("Path"), Bytes.toBytes(pos));
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		ImageIO.write(img, "png", baos);
-		p.addColumn(Bytes.toBytes("File"),
-				Bytes.toBytes("Tile"), baos.toByteArray());
-		baos.close();
-		table.put(p);
-	}
-	
-	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm8) throws IOException {
-		Configuration config = HBaseConfiguration.create();	
-		HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
-		Connection connection = ConnectionFactory.createConnection(config);
-		Admin admin = connection.getAdmin();
-		HColumnDescriptor position = new HColumnDescriptor("Position");
-		HColumnDescriptor file = new HColumnDescriptor("File");
-		hTable.addFamily(position);
-		hTable.addFamily(file);
-		if (admin.tableExists(hTable.getTableName())) {
-			admin.disableTable(hTable.getTableName());
-			admin.deleteTable(hTable.getTableName());
-		}
-		admin.createTable(hTable);
-		admin.close();
-
-		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
-			BufferedImage img = toBufferedImage(t._2);
-			insertTile(t._1, img);
-		});
 	}*/
 	
 	public static void main(String[] args) throws Exception {
@@ -421,13 +355,13 @@ public class MapsReader {
 		
 		// --- Save to hbase --
 		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
-			//ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
+			ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 			BufferedImage img = toBufferedImage(t._2);
-			/*ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write(img, "png", baos);
-			HBaseLink.HBaseProg.put(t._1, baos.toByteArray());*/
+			HBaseLink.HBaseProg.put(t._1, baos.toByteArray());
 			// TEST LOCAL
-			saveImg(img, args[1]+"/"+t._1);
+			//saveImg(img, args[1]+"/"+t._1);
 		});
 		
 		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> rddzm8Keyed = rddzm8.mapToPair((Tuple2<String, ImageIcon> t) -> {
@@ -498,14 +432,14 @@ public class MapsReader {
 		};
 		
 		VoidFunction<Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>>> lambdasave = (Tuple2<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> t) -> {
-			//ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
+			ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 			BufferedImage img = toBufferedImage(t._2._2);
 			String path = t._2._1._1() + "/" + t._2._1._2() + "/" + t._2._1._3();
-			/*ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write(img, "png", baos);
-			HBaseLink.HBaseProg.put(path, baos.toByteArray());*/
+			HBaseLink.HBaseProg.put(path, baos.toByteArray());
 			// TEST LOCAL
-			saveImg(img, args[1]+"/"+path);
+			//saveImg(img, args[1]+"/"+path);
 		};
 		
 		JavaPairRDD<Tuple3<Integer, Integer, Integer>, Tuple2<Tuple3<Integer, Integer, Integer>, ImageIcon>> rddn1 = rddzm8Grouped.flatMapToPair(lambdagreg).cache();
