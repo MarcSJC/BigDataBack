@@ -451,6 +451,7 @@ public class MapsReader {
 			rddn2 = rddn1.groupByKey().cache();
 			rddn1.unpersist();
 			rddn1 = rddn2.flatMapToPair(lambdagreg).cache();
+			rddn2.unpersist();
 			rddn1.foreach(lambdasave);
 		}
 		
