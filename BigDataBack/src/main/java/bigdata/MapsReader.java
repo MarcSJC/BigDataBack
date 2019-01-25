@@ -30,6 +30,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 
 import scala.Tuple2;
@@ -204,6 +205,18 @@ public class MapsReader {
 		return bi;
 	}
 	
+	private static ImageIcon combine4Img(ImageIcon i00, ImageIcon i01, ImageIcon i10, ImageIcon i11) {
+		int w = 2 * tileSize;
+		BufferedImage image = new BufferedImage(w, w, BufferedImage.TYPE_INT_RGB);
+		Graphics2D g2 = image.createGraphics();
+		g2.drawImage(i00.getImage(), 0, 0, null);
+		g2.drawImage(i01.getImage(), tileSize, 0, null);
+		g2.drawImage(i10.getImage(), 0, tileSize, null);
+		g2.drawImage(i11.getImage(), tileSize, tileSize, null);
+		g2.dispose();
+		return new ImageIcon(resize(image, tileSize, tileSize));
+	}
+	
 	/*private static void saveImg(BufferedImage img, String path) {
 		try {
 			Files.createDirectories(Paths.get(path).getParent());
@@ -218,8 +231,8 @@ public class MapsReader {
 		}
 	}
 	
-	private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm9, String dirpath) {
-		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+	private static void saveAllImages(JavaPairRDD<String, ImageIcon> rddzm8, String dirpath) {
+		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
 			String imgpath = dirpath + "/testtiles/" + zoom + "/" + t._1 + ".png";
 			BufferedImage img = toBufferedImage(t._2);
 			saveImg(img, imgpath);
@@ -243,7 +256,7 @@ public class MapsReader {
 		table.put(p);
 	}
 	
-	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm9) throws IOException {
+	private static void saveAllToHBase(JavaPairRDD<String, ImageIcon> rddzm8) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
 		Connection connection = ConnectionFactory.createConnection(config);
@@ -259,7 +272,7 @@ public class MapsReader {
 		admin.createTable(hTable);
 		admin.close();
 
-		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
 			BufferedImage img = toBufferedImage(t._2);
 			insertTile(t._1, img);
 		});
@@ -288,7 +301,7 @@ public class MapsReader {
 			return res;
 		}).cache();
 		//
-		JavaPairRDD<String, int[]> rddzm9Cut = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
+		JavaPairRDD<String, int[]> rddzm8Cut = rdd.flatMapToPair((Tuple2<Tuple2<Integer, Integer>, int[]> t) -> {
 			// --- Coordinates ---
 			int lat, lng;
 			lat = t._1._1;
@@ -374,10 +387,10 @@ public class MapsReader {
 		}).cache();
 		rddRaw.unpersist();
 		
-		JavaPairRDD<String, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey().cache();
+		JavaPairRDD<String, Iterable<int[]>> rddzm8CutGrouped = rddzm8Cut.groupByKey().cache();
 	
-		rddzm9Cut.unpersist();
-		JavaPairRDD<String, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<String, Iterable<int[]>> t) -> {
+		rddzm8Cut.unpersist();
+		JavaPairRDD<String, ImageIcon> rddzm8 = rddzm8CutGrouped.mapToPair((Tuple2<String, Iterable<int[]>> t) -> {
 			int size = (int) (degreePerBaseTile * (double) dem3Size);
 			Iterator<int[]> it = t._2.iterator();
 			int[] tile = it.next();
@@ -387,15 +400,15 @@ public class MapsReader {
 			ImageIcon img = intToImg(tile, size);
 			return new Tuple2<String, ImageIcon>(t._1, img);
 		}).cache();
-		rddzm9CutGrouped.unpersist();
-		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU RDDZM9");
+		rddzm8CutGrouped.unpersist();
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU rddzm8");
 		// --- Save to hbase ---
 		/*try {
-			saveAllToHBase(rddzm9);
+			saveAllToHBase(rddzm8);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}*/
-		//saveAllImages(rddzm9, args[1]);
+		//saveAllImages(rddzm8, args[1]);
 		//try {
 			/*Configuration config = HBaseConfiguration.create();	
 			HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
@@ -412,21 +425,36 @@ public class MapsReader {
 			admin.createTable(hTable);
 			admin.close();
 	
-			rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+			rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
 				BufferedImage img = toBufferedImage(t._2);
 				insertTile(t._1, img);
 			});
 			connection.close();*/
 		ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 		
-		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
 			BufferedImage img = toBufferedImage(t._2);
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write(img, "png", baos);
 			HBaseLink.HBaseProg.put(t._1, baos.toByteArray());
 		});
 		
-		rddzm9.unpersist();
+		JavaPairRDD<String, Tuple2<String, ImageIcon>> rddzm8Grouped = rddzm8.mapToPair((Tuple2<String, ImageIcon> t) -> {
+			String[] tokens = t._1.split("/");
+			int x = Integer.parseInt(tokens[1]);
+			int y = Integer.parseInt(tokens[2]);
+			if (x % 2 != 0) {
+				x--;
+			}
+			if (y % 2 != 0) {
+				y--;
+			}
+			String newKey = tokens[0] + "/" + x + "/" + y;
+			Tuple2<String, ImageIcon> newVal = new Tuple2<String, ImageIcon>();
+		});
+		rddzm8.unpersist();
+		
+		rddzm8Grouped.unpersist();
 		
 		context.close();
 		/*} catch (IOException e) {
