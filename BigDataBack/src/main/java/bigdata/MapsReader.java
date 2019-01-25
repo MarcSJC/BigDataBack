@@ -495,7 +495,7 @@ public class MapsReader {
 			BufferedImage img = toBufferedImage(t._2._2);
 			ByteArrayOutputStream baos = new ByteArrayOutputStream();
 			ImageIO.write(img, "png", baos);
-			HBaseLink.HBaseProg.put(t._2._1._1() + "/" + t._1, baos.toByteArray());
+			HBaseLink.HBaseProg.put(t._2._1._1() + "/" + t._2._1._2() + "/" + t._2._1._3(), baos.toByteArray());
 		});
 		rddzm7.unpersist();
 		
