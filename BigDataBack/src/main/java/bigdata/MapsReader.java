@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.util.ToolRunner;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -47,7 +48,7 @@ public class MapsReader {
 	private static short maxh = 9000;
 	private static int zoom = 8;
 	private final static double degreePerBaseTile = 360.0 / 512.0;
-	static TableName TABLENAME = TableName.valueOf("PascalTestTiles2");
+	static TableName TABLENAME = TableName.valueOf("PascalTestTiles3");
 		
 	private static int colorGradient(int value, double pred, double pgreen, double pblue) {
 		Color col1, col2;
@@ -203,7 +204,7 @@ public class MapsReader {
 		return bi;
 	}
 	
-	private static void saveImg(BufferedImage img, String path) {
+	/*private static void saveImg(BufferedImage img, String path) {
 		try {
 			Files.createDirectories(Paths.get(path).getParent());
 		} catch (IOException e1) {
@@ -223,9 +224,9 @@ public class MapsReader {
 			BufferedImage img = toBufferedImage(t._2);
 			saveImg(img, imgpath);
 		});
-	}
+	}*/
 	
-	private static void insertTile(String strpos, BufferedImage img) throws IOException {
+	/*private static void insertTile(String strpos, BufferedImage img) throws IOException {
 		Configuration config = HBaseConfiguration.create();	
 		Connection connection = ConnectionFactory.createConnection(config);
 		Table table = connection.getTable(TABLENAME);
@@ -262,9 +263,9 @@ public class MapsReader {
 			BufferedImage img = toBufferedImage(t._2);
 			insertTile(t._1, img);
 		});
-	}
+	}*/
 	
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws Exception {
 		SparkConf conf = new SparkConf().setAppName("SparkMaps");
 		JavaSparkContext context = new JavaSparkContext(conf);
 		context.setLogLevel("WARN");
@@ -373,7 +374,7 @@ public class MapsReader {
 		}).cache();
 		rddRaw.unpersist();
 		
-		JavaPairRDD<String, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey();
+		JavaPairRDD<String, Iterable<int[]>> rddzm9CutGrouped = rddzm9Cut.groupByKey().cache();
 	
 		rddzm9Cut.unpersist();
 		JavaPairRDD<String, ImageIcon> rddzm9 = rddzm9CutGrouped.mapToPair((Tuple2<String, Iterable<int[]>> t) -> {
@@ -396,7 +397,7 @@ public class MapsReader {
 		}*/
 		//saveAllImages(rddzm9, args[1]);
 		//try {
-			Configuration config = HBaseConfiguration.create();	
+			/*Configuration config = HBaseConfiguration.create();	
 			HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
 			Connection connection = ConnectionFactory.createConnection(config);
 			Admin admin = connection.getAdmin();
@@ -415,12 +416,22 @@ public class MapsReader {
 				BufferedImage img = toBufferedImage(t._2);
 				insertTile(t._1, img);
 			});
-			connection.close();
-			context.close();
+			connection.close();*/
+		ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
+		
+		rddzm9.foreach((Tuple2<String, ImageIcon> t) -> {
+			BufferedImage img = toBufferedImage(t._2);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ImageIO.write(img, "png", baos);
+			HBaseLink.HBaseProg.put(t._1, baos.toByteArray());
+		});
+		
+		rddzm9.unpersist();
+		
+		context.close();
 		/*} catch (IOException e) {
 			e.printStackTrace();
 		}*/
-		//rddzm9.unpersist();
 	}
 
 }
