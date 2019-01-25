@@ -413,36 +413,8 @@ public class MapsReader {
 		}).cache();
 		rddzm8CutGrouped.unpersist();
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FIN DU rddzm8");
-		// --- Save to hbase ---
-		/*try {
-			saveAllToHBase(rddzm8);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}*/
-		//saveAllImages(rddzm8, args[1]);
-		//try {
-			/*Configuration config = HBaseConfiguration.create();	
-			HTableDescriptor hTable = new HTableDescriptor(TABLENAME);
-			Connection connection = ConnectionFactory.createConnection(config);
-			Admin admin = connection.getAdmin();
-			HColumnDescriptor position = new HColumnDescriptor("Position");
-			HColumnDescriptor file = new HColumnDescriptor("File");
-			hTable.addFamily(position);
-			hTable.addFamily(file);
-			if (admin.tableExists(hTable.getTableName())) {
-				admin.disableTable(hTable.getTableName());
-				admin.deleteTable(hTable.getTableName());
-			}
-			admin.createTable(hTable);
-			admin.close();
-	
-			rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
-				BufferedImage img = toBufferedImage(t._2);
-				insertTile(t._1, img);
-			});
-			connection.close();*/
-		//ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 		
+		// --- Save to hbase --
 		rddzm8.foreach((Tuple2<String, ImageIcon> t) -> {
 			ToolRunner.run(HBaseConfiguration.create(), new HBaseLink.HBaseProg(), null);
 			BufferedImage img = toBufferedImage(t._2);
@@ -528,9 +500,6 @@ public class MapsReader {
 		rddzm7.unpersist();
 		
 		context.close();
-		/*} catch (IOException e) {
-			e.printStackTrace();
-		}*/
 	}
 
 }

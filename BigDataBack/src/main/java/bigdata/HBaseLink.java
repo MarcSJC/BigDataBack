@@ -21,48 +21,19 @@ public class HBaseLink {
 		protected static TableName TABLE_NAME = TableName.valueOf("PascalTestTiles4");
 		private static Connection connection;
 		private static Table table;
-		
-		/*public static void createOrOverwrite(Admin admin, HTableDescriptor table) throws IOException {
-			if (admin.tableExists(table.getTableName())) {
-				admin.disableTable(table.getTableName());
-				admin.deleteTable(table.getTableName());
-			}
-			admin.createTable(table);
-		}*/
-		
-		/*public static void createTable(Connection connect) {
-			try {
-				final Admin admin = connect.getAdmin(); 
-				HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
-				HColumnDescriptor famLoc = new HColumnDescriptor("Position");
-				HColumnDescriptor famLoc2 = new HColumnDescriptor("File"); 
-				//famLoc.set...
-				tableDescriptor.addFamily(famLoc);
-				//createOrOverwrite(admin, tableDescriptor);
-				admin.close();
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.exit(-1);
-			}
-		}*/
 
 		public static void put(String row, byte[] arr) throws IOException {
-			//try {
-				Put put = new Put(Bytes.toBytes(row));
-				put.addColumn(Bytes.toBytes("Position"),
-						Bytes.toBytes("Path"), Bytes.toBytes(row));
-				put.addColumn(Bytes.toBytes("File"),
-						Bytes.toBytes("Tile"), arr);
-				table.put(put);
-			/*} catch (IOException e) {
-				e.printStackTrace();
-			}*/
+			Put put = new Put(Bytes.toBytes(row));
+			put.addColumn(Bytes.toBytes("Position"),
+					Bytes.toBytes("Path"), Bytes.toBytes(row));
+			put.addColumn(Bytes.toBytes("File"),
+					Bytes.toBytes("Tile"), arr);
+			table.put(put);
 		}
 		
 		public int run(String[] args) throws IOException {
 			if (connection == null)
 				connection = ConnectionFactory.createConnection(getConf());
-			//createTable(connection);
 			if (table == null)
 				table = connection.getTable(TABLE_NAME);
 			return 0;
